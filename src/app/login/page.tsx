@@ -319,12 +319,6 @@ export default function LoginPage() {
           </form>
         )}
 
-        {isMockMode && (
-          <div className={styles.mockAlert}>
-            <AlertCircle size={14} />
-            <span>Modo Demo: Qualquer e-mail/senha é válido para testar.</span>
-          </div>
-        )}
       </div>
     </div>
   );

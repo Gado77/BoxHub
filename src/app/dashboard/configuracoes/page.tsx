@@ -562,32 +562,6 @@ export default function ConfiguracoesPage() {
             </div>
           </div>
 
-          {/* Card: Reset Simulator Database (Mock Mode only) */}
-          {isMockMode && (
-            <div className={`${styles.card} glass`} style={{ borderLeft: '3px solid var(--danger)' }}>
-              <div className={styles.cardHeader}>
-                <h3 className={styles.cardTitle} style={{ color: 'var(--danger)' }}>
-                  <AlertTriangle className={styles.titleIcon} size={18} style={{ color: 'var(--danger)' }} />
-                  <span>Zona de Perigo (Simulador)</span>
-                </h3>
-                <p className={styles.cardSubtitle}>Ações de redefinição para fins de teste do protótipo</p>
-              </div>
-
-              <div className={styles.dangerRow}>
-                <div>
-                  <h4 className={styles.dangerTitle}>Reinicializar Banco de Dados</h4>
-                  <p className={styles.dangerDesc}>Apaga todos os clientes, produtos e vendas criados no navegador e restaura os dados padrão do MVP.</p>
-                </div>
-                <button 
-                  onClick={() => setIsResetModalOpen(true)} 
-                  className="btn-danger"
-                  style={{ whiteSpace: 'nowrap', padding: '0.6rem 1.2rem', fontSize: '0.85rem' }}
-                >
-                  Resetar Demo
-                </button>
-              </div>
-            </div>
-          )}
 
         </div>
 
