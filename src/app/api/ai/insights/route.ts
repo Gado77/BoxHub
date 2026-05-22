@@ -42,24 +42,88 @@ export async function GET(request: Request) {
     const fiadoSales = salesList.filter(s => s.payment_method === 'fiado' && s.status === 'pendente');
     const totalFiado = fiadoSales.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
 
-    // If Anthropic API key is not configured, we return mock/rule-based insights immediately
+    // If Anthropic API key is not configured, we return rule-based insights based on real data
     if (!anthropic) {
-      const fallbackInsights = [
-        {
-          type: 'warning',
-          text: `⚠️ **João da Quitanda** não compra há 11 dias — a média dele é a cada 5 dias. Vale ligar.`
-        },
-        {
-          type: 'danger',
-          text: `💸 **Mercado Estrela** está com R$ 680,00 em aberto há 14 dias no fiado. É o maior fiado em atraso.`
-        },
-        {
-          type: 'success',
-          text: `📈 **Restaurante Bom Sabor** aumentou pedidos em 40% este mês. É o seu cliente com maior crescimento!`
-        }
-      ];
+      const fallbackInsights = [];
 
-      return NextResponse.json({ insights: fallbackInsights });
+      if (clientsList.length === 0) {
+        fallbackInsights.push({
+          type: 'success',
+          text: '✨ **Bem-vindo ao BoxHub!** Cadastre seus primeiros clientes e registre vendas para visualizar análises inteligentes aqui.'
+        });
+      } else {
+        // 1. Calculate highest fiado balance
+        const clientBalances = clientsList.map(client => {
+          // Calculate total unpaid fiado for this client
+          const clientSales = salesList.filter(s => s.client_id === client.id && !s.is_canceled);
+          const fiadoTotal = clientSales
+            .filter(s => s.payment_method === 'fiado' && s.status === 'pendente')
+            .reduce((sum, s) => sum + Number(s.total_amount), 0);
+          
+          return { client, fiadoTotal, sales: clientSales };
+        });
+
+        // Filter and sort by fiado balance
+        const highestFiado = [...clientBalances]
+          .filter(cb => cb.fiadoTotal > 0)
+          .sort((a, b) => b.fiadoTotal - a.fiadoTotal)[0];
+
+        if (highestFiado) {
+          fallbackInsights.push({
+            type: 'danger',
+            text: `💸 **${highestFiado.client.name}** está com R$ ${highestFiado.fiadoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} em aberto no fiado. Recomenda-se realizar uma cobrança.`
+          });
+        }
+
+        // 2. Calculate inactivity (clients who haven't bought in a while)
+        const now = new Date();
+        const clientInactivity = clientBalances
+          .map(cb => {
+            if (cb.sales.length === 0) return null;
+            const lastSaleDate = new Date(Math.max(...cb.sales.map(s => new Date(s.created_at).getTime())));
+            const daysDiff = Math.floor((now.getTime() - lastSaleDate.getTime()) / (1000 * 60 * 60 * 24));
+            return { client: cb.client, days: daysDiff };
+          })
+          .filter(Boolean) as { client: any, days: number }[];
+
+        const mostInactive = clientInactivity
+          .filter(ci => ci.days > 5) // more than 5 days inactive
+          .sort((a, b) => b.days - a.days)[0];
+
+        if (mostInactive) {
+          fallbackInsights.push({
+            type: 'warning',
+            text: `⚠️ **${mostInactive.client.name}** não realiza compras há ${mostInactive.days} dias. Que tal mandar um WhatsApp?`
+          });
+        }
+
+        // 3. Highlight top customer
+        const clientStats = clientBalances.map(cb => {
+          const totalSpent = cb.sales.reduce((sum, s) => sum + Number(s.total_amount), 0);
+          return { client: cb.client, totalSpent, count: cb.sales.length };
+        });
+
+        const topSpent = clientStats
+          .filter(cs => cs.totalSpent > 0)
+          .sort((a, b) => b.totalSpent - a.totalSpent)[0];
+
+        if (topSpent) {
+          fallbackInsights.push({
+            type: 'success',
+            text: `📈 **${topSpent.client.name}** é o seu maior cliente em volume, totalizando R$ ${topSpent.totalSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} em compras.`
+          });
+        }
+
+        // Fallback if we couldn't generate any of the above (e.g. they exist but no purchases yet)
+        if (fallbackInsights.length === 0) {
+          fallbackInsights.push({
+            type: 'success',
+            text: '✨ **Tudo em dia!** Seus clientes estão ativos e com contas em dia. Registre novas vendas para ver novos insights.'
+          });
+        }
+      }
+
+      return NextResponse.json({ insights: fallbackInsights.slice(0, 3) });
     }
 
     // Serializing data as a small JSON payload for Claude
