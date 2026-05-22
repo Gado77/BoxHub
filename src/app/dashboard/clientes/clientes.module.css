@@ -1,0 +1,1069 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 100%;
+}
+
+.topRow {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+/* Left Column: Client List Directory */
+.leftCol {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.listCard {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: 100%;
+}
+
+.listHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.listTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.searchBar {
+  position: relative;
+}
+
+.clientList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.25rem;
+}
+
+.clientList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.clientList::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.clientItem {
+  padding: 0.85rem;
+  background: rgba(120, 120, 120, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.clientItem:hover {
+  background: rgba(120, 120, 120, 0.05);
+  border-color: var(--text-muted);
+  transform: translateX(2px);
+}
+
+.clientItemActive {
+  background: var(--bg-card-hover);
+  border-color: var(--primary);
+  border-left: 4px solid var(--primary);
+  padding-left: 0.6rem; /* compensation for border */
+}
+
+/* Avatar with Initials */
+.avatar {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 8px;
+  background: rgba(120, 120, 120, 0.08);
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color);
+  text-transform: uppercase;
+}
+
+.clientItemActive .avatar {
+  background: rgba(29, 158, 117, 0.15);
+  color: var(--primary);
+  border-color: rgba(29, 158, 117, 0.25);
+}
+
+.clientItemInfo {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.statusDotSaudavel { background-color: var(--success); }
+.statusDotAtencao { background-color: var(--warning); }
+.statusDotRisco { background-color: var(--danger); }
+
+.clientItemName {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.clientItemSub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.debtBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.noDebtBadge {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Right Column: Client Details Panel (Upper Row) */
+.rightCol {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+}
+
+.detailCard {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+}
+
+.detailHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1.25rem;
+}
+
+.clientProfileArea {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.avatarLarge {
+  width: 54px;
+  height: 54px;
+  min-width: 54px;
+  border-radius: 12px;
+  background: rgba(29, 158, 117, 0.1);
+  color: var(--primary);
+  border: 1px solid rgba(29, 158, 117, 0.2);
+  font-size: 1.25rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+}
+
+.clientMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.clientTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.clientTitle {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.clientTypeLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(120, 120, 120, 0.08);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.contactInfo {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.actionBtnWhatsapp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #25D366;
+  border: 1px solid rgba(37, 211, 102, 0.2);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.actionBtnWhatsapp:hover {
+  background: #128C7E;
+}
+
+.actionBtnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+  background: rgba(120, 120, 120, 0.05);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.actionBtnSecondary:hover {
+  background: rgba(120, 120, 120, 0.1);
+  border-color: var(--text-muted);
+}
+
+/* Fiado Details Grid & Progress */
+.financialSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.fiadoInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.fiadoMetric {
+  padding: 1rem;
+  background: rgba(120, 120, 120, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  position: relative;
+}
+
+.fiadoMetricIcon {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+
+.fiadoMetricLabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.fiadoMetricVal {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: var(--font-poppins);
+  color: var(--text-main);
+}
+
+.fiadoAlertState {
+  border-color: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.02);
+}
+
+/* Limit Progress Bar */
+.progressBarContainer {
+  background: rgba(120, 120, 120, 0.02);
+  border: 1px solid var(--border-color);
+  padding: 0.85rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.progressBarLabelRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.progressBarTrack {
+  height: 6px;
+  background: rgba(120, 120, 120, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* Amortize form styling */
+.amortizeSection {
+  background: rgba(120, 120, 120, 0.02);
+  border: 1px solid var(--border-color);
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.amortizeHeader {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.amortizeHeaderIcon {
+  color: var(--primary);
+}
+
+.amortizeForm {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.formInputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.inputControl {
+  height: 44px;
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0 0.85rem;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  transition: all var(--transition-fast);
+}
+
+.inputControl:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.btnSubmit {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.25rem;
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btnSubmit:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.btnSubmit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* History logs inside Details Card */
+.historySection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.historyTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.historyTableWrapper {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.historyTable th {
+  padding: 0.75rem 1rem;
+  background: rgba(120, 120, 120, 0.05);
+  color: var(--text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.historyTable td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.historyTable tr {
+  transition: background-color var(--transition-fast);
+}
+
+.historyTable tr:hover td {
+  background: rgba(120, 120, 120, 0.03);
+}
+
+.historyTable tr:last-child td {
+  border-bottom: none;
+}
+
+
+/* Bottom row: 3 Cards Lado a Lado (Billing, Insights, Observations) */
+.bottomRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  width: 100%;
+  align-items: stretch;
+  animation: fadeIn var(--transition-normal) forwards;
+}
+
+.widgetTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+  margin: 0;
+}
+
+/* 1. Perfil de Faturamento Card */
+.profileCard {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.profileGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.profileMetric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+  padding: 0.5rem 0;
+}
+
+.profileMetricLabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.profileMetricVal {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+  font-family: var(--font-poppins);
+}
+
+.profileMetricSub {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.scoreBadge {
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.scoreA {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.scoreB {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3B82F6;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.scoreC {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.scoreD {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.miniChartContainer {
+  width: 100%;
+  height: 40px;
+  margin-top: 0.25rem;
+}
+
+.miniChartSvg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+
+/* 2. Insights de Crédito Card */
+.insightsCard {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.insightsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.insightMiniCard {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.85rem;
+  background: rgba(120, 120, 120, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  transition: transform var(--transition-fast), background-color var(--transition-fast);
+}
+
+.insightMiniCard:hover {
+  transform: translateY(-1px);
+  background: rgba(120, 120, 120, 0.04);
+}
+
+.insightIcon {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 4px;
+  background: rgba(120, 120, 120, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.insightContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.insightTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.insightDesc {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.insightSuccess {
+  border-left: 3px solid var(--success);
+}
+.insightSuccess .insightIcon {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+}
+
+.insightWarning {
+  border-left: 3px solid var(--warning);
+}
+.insightWarning .insightIcon {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+}
+
+.insightOpportunity {
+  border-left: 3px solid #3B82F6;
+}
+.insightOpportunity .insightIcon {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3B82F6;
+}
+
+.insightDanger {
+  border-left: 3px solid var(--danger);
+}
+.insightDanger .insightIcon {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
+
+/* 3. Observações Internas Card */
+.obsCard {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.obsTextarea {
+  width: 100%;
+  height: 140px;
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.85rem;
+  color: var(--text-main);
+  font-size: 0.85rem;
+  font-family: inherit;
+  resize: none;
+  transition: all var(--transition-fast);
+  margin-bottom: 0.5rem;
+}
+
+.obsTextarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.obsFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.obsMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.autosaveStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 500;
+}
+
+.statusTyping {
+  color: var(--warning);
+}
+
+.statusSaved {
+  color: var(--success);
+}
+
+.btnSaveObs {
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  background: var(--success); /* GREEN "Salvar Nota" button */
+  border: none;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btnSaveObs:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+
+/* Empty State detail pane */
+.emptyDetails {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 6rem 2rem;
+  height: 100%;
+}
+
+.emptyDetails h3 {
+  font-size: 1.2rem;
+  color: var(--text-main);
+  margin-bottom: 0.25rem;
+}
+
+
+/* Modals */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.modalContent {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.75rem;
+  width: 450px;
+  max-width: 90%;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+}
+
+.modalTitle {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modalCloseBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all var(--transition-fast);
+}
+
+.modalCloseBtn:hover {
+  background: rgba(120, 120, 120, 0.1);
+  color: var(--text-main);
+}
+
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Mobile elements default hidden state */
+.backBtnMobile {
+  display: none;
+}
+
+.historyMobileList {
+  display: none;
+}
+
+.historyMobileCard {
+  background: rgba(120, 120, 120, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.historyMobileRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.historyMobileDate {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.historyMobileAmount {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.statusPaid {
+  color: var(--success);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.statusPending {
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Responsive styles */
+@media (max-width: 1024px) {
+  .bottomRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .topRow {
+    display: block; /* Remove grid template so contents stack or toggle display */
+  }
+
+  /* Master-Detail Toggling */
+  .container.showList .leftCol {
+    display: flex;
+    width: 100%;
+    height: calc(100vh - 160px);
+  }
+
+  .container.showList .rightCol,
+  .container.showList .bottomRow {
+    display: none !important;
+  }
+
+  .container.showDetail .leftCol {
+    display: none !important;
+  }
+
+  .container.showDetail .rightCol {
+    display: flex;
+    width: 100%;
+  }
+
+  .container.showDetail .bottomRow {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+  }
+
+  /* Mobile Back Button */
+  .backBtnMobile {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--primary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid var(--border-color);
+    width: 100%;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    transition: color var(--transition-fast);
+  }
+
+  .backBtnMobile:hover {
+    color: var(--primary-hover);
+  }
+}
+
+@media (max-width: 600px) {
+  /* Detail Pane Layout Improvements */
+  .detailHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .headerActions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .actionBtnWhatsapp,
+  .actionBtnSecondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .clientTitle {
+    font-size: 1.15rem;
+  }
+
+  /* Form & Grid adjustments */
+  .amortizeForm {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .fiadoInfoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .profileGrid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  /* History list swaps */
+  .historyTableWrapper {
+    display: none;
+  }
+
+  .historyMobileList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+

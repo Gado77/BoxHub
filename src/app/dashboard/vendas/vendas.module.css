@@ -1,0 +1,373 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Metrics Summary Grid */
+.metricsSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.summaryCard {
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.summaryCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary-alpha-30);
+}
+
+.summaryCardIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(29, 158, 117, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.summaryCardInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.summaryCardLabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.summaryCardValue {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* Filters Card */
+.filtersCard {
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+}
+
+.filtersHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.filtersTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filtersTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.clearFiltersBtn {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transition: all var(--transition-fast);
+}
+
+.clearFiltersBtn:hover {
+  background: rgba(29, 158, 117, 0.08);
+}
+
+.filtersGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.searchWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.filterControl select {
+  cursor: pointer;
+}
+
+/* Sales List Card */
+.listCard {
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.emptyState h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0 0 0.5rem 0;
+}
+
+.emptyState p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.salesTableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.salesTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.salesTable th {
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+  letter-spacing: 0.03em;
+}
+
+.salesTable tr {
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.salesTable tr:last-child {
+  border-bottom: none;
+}
+
+.salesTable tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.salesTable td {
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: var(--text-main);
+  vertical-align: middle;
+}
+
+.dateCell {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  min-height: 40px; /* aligns with other cells */
+}
+
+/* Mobile Views */
+.salesMobileList {
+  display: none;
+}
+
+/* Media Queries */
+@media (max-width: 1024px) {
+  .filtersGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .metricsSummaryGrid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .filtersGrid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .salesTable {
+    display: none;
+  }
+
+  .salesMobileList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.25rem 0;
+  }
+
+  .saleMobileCard {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: transform var(--transition-fast), border-color var(--transition-fast);
+  }
+
+  .saleMobileCard:hover {
+    border-color: var(--primary);
+  }
+
+  .saleMobileCardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .saleMobileCardClient {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
+  }
+
+  .saleMobileCardAmount {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--primary);
+  }
+
+  .saleMobileCardFooter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 0.6rem;
+  }
+
+  .saleMobileCardDate {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+}
+
+@media (max-width: 480px) {
+  .summaryCard {
+    padding: 1rem;
+  }
+  
+  .filtersCard {
+    padding: 1rem;
+  }
+
+  .listCard {
+    padding: 1rem;
+  }
+}
+
+.headerRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  width: fit-content;
+  transition: color var(--transition-fast);
+}
+
+.backLink:hover {
+  color: var(--primary);
+}
+
+.pageTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+/* Canceled sales styles */
+.canceledRow {
+  opacity: 0.55;
+  background: rgba(239, 68, 68, 0.02) !important;
+}
+
+.canceledRow td {
+  text-decoration: line-through;
+  color: var(--text-muted) !important;
+}
+
+.canceledRow td:nth-child(3),
+.canceledRow td:nth-child(4),
+.canceledRow td:nth-child(6) {
+  text-decoration: none; /* badges and icons do not need strike through */
+}
+
+.canceledCard {
+  opacity: 0.55;
+  background: rgba(239, 68, 68, 0.02) !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+.canceledCard .saleMobileCardClient,
+.canceledCard .saleMobileCardAmount {
+  text-decoration: line-through;
+  color: var(--text-muted) !important;
+}

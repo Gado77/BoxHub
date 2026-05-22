@@ -1,0 +1,550 @@
+.dashboardGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  animation: fadeIn var(--transition-normal) forwards;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Metrics Cards Row Grid */
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+
+.metricCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  border-radius: 12px;
+  padding: 1.15rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+              background-color var(--transition-normal),
+              border-color var(--transition-normal), 
+              box-shadow var(--transition-normal);
+}
+
+.metricCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-glow);
+  box-shadow: var(--shadow-glow), var(--shadow-md);
+  background: var(--bg-card-hover);
+}
+
+.metricIconContainer {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.metricRevenue {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.metricFiado {
+  background: rgba(249, 115, 22, 0.1);
+  color: #F97316;
+  border: 1px solid rgba(249, 115, 22, 0.2);
+}
+
+.metricClients {
+  background: rgba(234, 179, 8, 0.1);
+  color: #EAB308;
+  border: 1px solid rgba(234, 179, 8, 0.2);
+}
+
+.metricSales {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38BDF8;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.metricDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.metricLabel {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.metricValue {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-main);
+  font-family: var(--font-poppins);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  transition: color var(--transition-normal);
+}
+
+/* Main Split Dashboard Grid */
+.mainSplit {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Cards Standard Layout */
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cardTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-main);
+  transition: color var(--transition-normal);
+}
+
+.salesContainer {
+  padding: 1.5rem;
+}
+
+/* Sales Table Styles */
+.salesTableWrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+}
+
+.salesTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.salesTable th {
+  padding: 0.85rem 1rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: transparent;
+}
+
+.salesTable tr {
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.salesTable td {
+  padding: 1.15rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-main);
+  transition: background-color var(--transition-fast);
+}
+
+.salesTable tr:last-child td {
+  border-bottom: none;
+}
+
+.salesTable tr:hover td {
+  background: rgba(120, 120, 120, 0.05);
+}
+
+/* Right Column Panels */
+.rightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.quickActionsCard {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.actionButton {
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all var(--transition-fast);
+}
+
+/* Central Inteligente de Decisões (AI Insights) */
+.aiInsightsCard {
+  padding: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-normal);
+}
+
+.aiHeading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--primary);
+  font-weight: 700;
+  font-family: var(--font-poppins);
+  font-size: 1.05rem;
+}
+
+.aiHeaderBtn {
+  background: rgba(120, 120, 120, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  transition: all var(--transition-fast);
+}
+
+.aiHeaderBtn:hover:not(:disabled) {
+  background: rgba(29, 158, 117, 0.08);
+  border-color: var(--primary-glow);
+}
+
+.aiList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.aiItem {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  background: rgba(120, 120, 120, 0.03);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text-main);
+  animation: fadeIn 0.4s ease forwards;
+  transition: all var(--transition-fast);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.aiItemContent {
+  flex: 1;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.aiItemTitle {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-main);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.aiItemDesc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.aiItem:hover {
+  transform: translateX(2px);
+  background: rgba(120, 120, 120, 0.05);
+}
+
+.aiItemAlerta {
+  border-left: 4px solid var(--warning);
+}
+
+.aiItemAlerta .aiItemIconContainer {
+  color: var(--warning);
+  background: rgba(245, 166, 35, 0.08);
+}
+
+.aiItemRisco {
+  border-left: 4px solid var(--danger);
+}
+
+.aiItemRisco .aiItemIconContainer {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.aiItemOportunidade {
+  border-left: 4px solid var(--success);
+}
+
+.aiItemOportunidade .aiItemIconContainer {
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.aiItemIconContainer {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* AI Insights Footer and Secondary Button */
+.aiFooter {
+  font-size: 0.725rem;
+  color: var(--text-muted);
+  text-align: center;
+  opacity: 0.65;
+  margin-top: 1.25rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border-color);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: opacity var(--transition-normal);
+}
+
+.aiFooter:hover {
+  opacity: 0.9;
+}
+
+/* Mobile Sales List (Default state: hidden, displayed in media queries) */
+.salesMobileList {
+  display: none;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.saleMobileCard {
+  background: rgba(120, 120, 120, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.saleMobileCard:hover {
+  background: rgba(120, 120, 120, 0.06);
+  border-color: var(--border-glow);
+}
+
+.saleMobileCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+.saleMobileCardClient {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.saleMobileCardBody {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 0.5rem;
+}
+
+.saleMobileCardDate {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.saleMobileCardAmount {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.emptyState {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 3rem 1.5rem;
+  font-size: 0.9rem;
+}
+
+/* Responsive Styles */
+@media (max-width: 1024px) {
+  .mainSplit {
+    grid-template-columns: 1fr;
+  }
+  .metricsRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .salesTable {
+    display: none;
+  }
+  
+  .salesMobileList {
+    display: flex;
+  }
+  
+  .salesTableWrapper {
+    overflow-x: hidden;
+  }
+}
+
+@media (max-width: 600px) {
+  .metricsRow {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .cardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .quickActionsCard {
+    padding: 1rem;
+  }
+  
+  .salesContainer {
+    padding: 1rem;
+  }
+  
+  .aiInsightsCard {
+    padding: 1rem;
+  }
+  
+  .modalContent {
+    max-height: 95vh;
+  }
+}
+
+@media (max-width: 430px) {
+  .dashboardGrid {
+    gap: 10px;
+  }
+
+  .metricsRow {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .metricCard {
+    padding: 0.5rem 0.6rem;
+    gap: 0.5rem;
+    align-items: center;
+    min-height: 64px;
+  }
+
+  .metricIconContainer {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    border-radius: 6px;
+  }
+
+  .metricIconContainer svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .metricValue {
+    font-size: 18px !important;
+  }
+
+  .metricLabel {
+    font-size: 0.7rem;
+  }
+
+  .mainSplit {
+    gap: 10px;
+  }
+
+  .rightColumn {
+    gap: 10px;
+  }
+
+  .quickActionsCard,
+  .salesContainer,
+  .aiInsightsCard {
+    padding: 12px !important;
+  }
+}
+
+.canceledRow {
+  opacity: 0.55;
+  text-decoration: line-through !important;
+  background-color: rgba(255, 255, 255, 0.01) !important;
+}
+
+.canceledRow:hover {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+.canceledCard {
+  opacity: 0.55;
+  text-decoration: line-through !important;
+  background-color: rgba(255, 255, 255, 0.01) !important;
+  border-color: var(--border-color) !important;
+}
+
+
+
+
