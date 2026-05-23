@@ -22,21 +22,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Dados incompletos para criação de membro.' }, { status: 400 });
     }
 
-    // Create user in auth.users with default password
-    const tempPassword = 'BoxHub@2026';
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    // Invite user via email using Supabase
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
       email,
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: { full_name: name }
-    });
+      {
+        redirectTo: `${appUrl}/login`,
+        data: {
+          full_name: name
+        }
+      }
+    );
 
     if (authError) {
       return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
     if (!authData?.user) {
-      return NextResponse.json({ error: 'Falha ao criar credenciais do usuário.' }, { status: 400 });
+      return NextResponse.json({ error: 'Falha ao gerar convite para o usuário.' }, { status: 400 });
     }
 
     // Insert user into profiles

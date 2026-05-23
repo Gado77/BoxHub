@@ -802,7 +802,7 @@ export default function ConfiguracoesPage() {
                 />
                 {!isMockMode && (
                   <span className={styles.settingDesc} style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    A senha temporária padrão do novo vendedor será <strong>BoxHub@2026</strong>
+                    O novo vendedor receberá um e-mail de convite para criar sua senha e acessar a plataforma.
                   </span>
                 )}
               </div>
