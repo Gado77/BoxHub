@@ -56,8 +56,9 @@
 }
 
 .companyLogoImg {
-  max-width: 160px;
-  max-height: 44px;
+  height: 44px;
+  width: auto;
+  max-width: 180px;
   object-fit: contain;
   display: block;
 }
