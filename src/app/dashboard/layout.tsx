@@ -39,19 +39,7 @@ export default function DashboardLayout({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
-  const profileRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
-        setIsMobileProfileOpen(false);
-      }
-    };
-    if (isMobileProfileOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isMobileProfileOpen]);
+  const profileBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
@@ -393,7 +381,8 @@ export default function DashboardLayout({
             {user && (
               <div style={{ position: 'relative' }}>
                 <button
-                  onClick={() => setIsMobileProfileOpen(!isMobileProfileOpen)}
+                  ref={profileBtnRef}
+                  onClick={() => setIsMobileProfileOpen(prev => !prev)}
                   className={styles.mobileProfileBtn}
                   title="Meu perfil"
                 >
@@ -408,8 +397,8 @@ export default function DashboardLayout({
 
                 {isMobileProfileOpen && (
                   <>
-                    <div className={styles.mobileProfileBackdrop} />
-                    <div ref={profileRef} className={`${styles.mobileProfileDropdown} glass`}>
+                    <div className={styles.mobileProfileBackdrop} onClick={() => setIsMobileProfileOpen(false)} />
+                    <div className={`${styles.mobileProfileDropdown} glass`}>
                       <div className={styles.mobileProfileHeader}>
                         <div className={styles.mobileProfileAvatarLarge}>
                           {user.avatar_url ? (
