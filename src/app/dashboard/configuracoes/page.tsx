@@ -57,6 +57,7 @@ export default function ConfiguracoesPage() {
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<'admin' | 'vendedor'>('vendedor');
   const [editMemberName, setEditMemberName] = useState('');
+  const [memberPassword, setMemberPassword] = useState('');
   const [editMemberRole, setEditMemberRole] = useState<'admin' | 'vendedor'>('vendedor');
 
   // Modal actions status
@@ -240,13 +241,16 @@ export default function ConfiguracoesPage() {
         if (!res.ok) {
           throw new Error(data.error || 'Erro ao adicionar membro.');
         }
+        setMemberPassword(data.defaultPassword || '');
         await loadConfigData();
+        return; // keeps modal open to show password
       }
 
-      // Reset and close
+      // Reset and close (mock mode only)
       setNewMemberName('');
       setNewMemberEmail('');
       setNewMemberRole('vendedor');
+      setMemberPassword('');
       setIsAddModalOpen(false);
     } catch (err: any) {
       console.error('Error adding member:', err);
@@ -764,7 +768,11 @@ export default function ConfiguracoesPage() {
               
               {isUserAdmin && (
                 <button 
-                  onClick={() => setIsAddModalOpen(true)}
+                  onClick={() => {
+                    setMemberPassword('');
+                    setModalError('');
+                    setIsAddModalOpen(true);
+                  }}
                   className="btn-primary"
                   style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', gap: '0.25rem' }}
                 >
@@ -881,63 +889,110 @@ export default function ConfiguracoesPage() {
               </button>
             </div>
 
-            <form onSubmit={handleAddMember}>
-              {modalError && (
-                <div className={`${styles.alert} ${styles.alertDanger}`} style={{ marginBottom: '1rem' }}>
-                  <AlertCircle size={16} />
-                  <span>{modalError}</span>
+            {memberPassword ? (
+              <div style={{ padding: '0.5rem 0' }}>
+                <div className={`${styles.alert} ${styles.alertSuccess}`} style={{ marginBottom: '1rem' }}>
+                  <Check size={16} />
+                  <span>Membro adicionado com sucesso!</span>
                 </div>
-              )}
 
-              <div className="form-group">
-                <label className="form-label">Nome Completo</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  placeholder="Nome do vendedor"
-                  value={newMemberName}
-                  onChange={(e) => setNewMemberName(e.target.value)}
-                  required
-                />
+                <p style={{ marginBottom: '0.5rem', color: 'var(--text-main)' }}>
+                  Compartilhe as credenciais abaixo com <strong>{newMemberName}</strong>:
+                </p>
+
+                <div style={{ 
+                  background: 'var(--bg-main)', 
+                  border: '1px solid var(--border-color)', 
+                  borderRadius: 'var(--radius-md)', 
+                  padding: '1rem',
+                  marginBottom: '1rem'
+                }}>
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>E-mail</span>
+                    <div style={{ fontWeight: 600, color: 'var(--text-main)', wordBreak: 'break-all' }}>{newMemberEmail}</div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Senha padrão</span>
+                    <div style={{ 
+                      fontWeight: 700, 
+                      color: 'var(--primary)', 
+                      fontSize: '1.1rem', 
+                      fontFamily: 'monospace',
+                      letterSpacing: '1px'
+                    }}>{memberPassword}</div>
+                  </div>
+                </div>
+
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                  O membro pode alterar a senha depois de acessar o painel.
+                </p>
+
+                <div className={styles.modalFooter}>
+                  <button type="button" className="btn-primary" onClick={() => {
+                    setNewMemberName('');
+                    setNewMemberEmail('');
+                    setNewMemberRole('vendedor');
+                    setMemberPassword('');
+                    setIsAddModalOpen(false);
+                  }}>
+                    Ok, entendi
+                  </button>
+                </div>
               </div>
-
-              <div className="form-group">
-                <label className="form-label">Cargo / Permissão</label>
-                <select 
-                  className="form-control"
-                  value={newMemberRole}
-                  onChange={(e) => setNewMemberRole(e.target.value as any)}
-                >
-                  <option value="vendedor">Vendedor / Operador (Apenas Vendas)</option>
-                  <option value="admin">Administrador (Acesso total)</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">E-mail de Acesso</label>
-                <input 
-                  type="email" 
-                  className="form-control" 
-                  placeholder="vendedor@empresa.com"
-                  value={newMemberEmail}
-                  onChange={(e) => setNewMemberEmail(e.target.value)}
-                />
-                {!isMockMode && (
-                  <span className={styles.settingDesc} style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    O novo vendedor receberá um e-mail de convite para criar sua senha e acessar a plataforma.
-                  </span>
+            ) : (
+              <form onSubmit={handleAddMember}>
+                {modalError && (
+                  <div className={`${styles.alert} ${styles.alertDanger}`} style={{ marginBottom: '1rem' }}>
+                    <AlertCircle size={16} />
+                    <span>{modalError}</span>
+                  </div>
                 )}
-              </div>
 
-              <div className={styles.modalFooter}>
-                <button type="button" className="btn-secondary" onClick={() => setIsAddModalOpen(false)} disabled={modalLoading}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn-primary" disabled={modalLoading}>
-                  {modalLoading ? <span className="loading-spinner"></span> : 'Adicionar Membro'}
-                </button>
-              </div>
-            </form>
+                <div className="form-group">
+                  <label className="form-label">Nome Completo</label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    placeholder="Nome do vendedor"
+                    value={newMemberName}
+                    onChange={(e) => setNewMemberName(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Cargo / Permissão</label>
+                  <select 
+                    className="form-control"
+                    value={newMemberRole}
+                    onChange={(e) => setNewMemberRole(e.target.value as any)}
+                  >
+                    <option value="vendedor">Vendedor / Operador (Apenas Vendas)</option>
+                    <option value="admin">Administrador (Acesso total)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">E-mail de Acesso</label>
+                  <input 
+                    type="email" 
+                    className="form-control" 
+                    placeholder="vendedor@empresa.com"
+                    value={newMemberEmail}
+                    onChange={(e) => setNewMemberEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.modalFooter}>
+                  <button type="button" className="btn-secondary" onClick={() => setIsAddModalOpen(false)} disabled={modalLoading}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn-primary" disabled={modalLoading}>
+                    {modalLoading ? <span className="loading-spinner"></span> : 'Adicionar Membro'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

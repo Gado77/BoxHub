@@ -10,6 +10,8 @@ const supabaseAdmin = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABA
     })
   : null;
 
+const DEFAULT_PASSWORD = process.env.DEFAULT_MEMBER_PASSWORD || 'boxhub123';
+
 export async function POST(request: Request) {
   try {
     if (!supabaseAdmin) {
@@ -22,24 +24,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Dados incompletos para criação de membro.' }, { status: 400 });
     }
 
-    // Invite user via email using Supabase
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+    // Create user with default password
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      {
-        redirectTo: `${appUrl}/welcome`,
-        data: {
-          full_name: name
-        }
+      password: DEFAULT_PASSWORD,
+      email_confirm: true,
+      user_metadata: {
+        full_name: name
       }
-    );
+    });
 
     if (authError) {
       return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
     if (!authData?.user) {
-      return NextResponse.json({ error: 'Falha ao gerar convite para o usuário.' }, { status: 400 });
+      return NextResponse.json({ error: 'Falha ao criar usuário.' }, { status: 400 });
     }
 
     // Insert user into profiles
@@ -53,23 +53,24 @@ export async function POST(request: Request) {
       });
 
     if (profileError) {
-      // Clean up the created auth user if profile creation failed to avoid orphans
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
       return NextResponse.json({ error: profileError.message }, { status: 400 });
     }
 
     return NextResponse.json({ 
-      success: true, 
+      success: true,
+      defaultPassword: DEFAULT_PASSWORD,
       member: {
         id: authData.user.id,
         organization_id,
         name,
-        role
+        role,
+        email
       }
     });
 
   } catch (err: any) {
-    console.error('Erro na API de convite de equipe:', err);
+    console.error('Erro na API de criação de membro:', err);
     return NextResponse.json({ error: err.message || 'Erro interno no servidor.' }, { status: 500 });
   }
 }
