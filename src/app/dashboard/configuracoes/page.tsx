@@ -549,62 +549,109 @@ export default function ConfiguracoesPage() {
               <p className={styles.cardSubtitle}>Sua marca aparece na sidebar, mobile header e página de boas-vindas.</p>
             </div>
 
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              setSaveLoading(true);
-              setSaveError('');
-              setSaveSuccess(false);
-              try {
-                if (isMockMode) {
-                  mockDb.updateOrgLogo(logoUrl);
-                  await new Promise(r => setTimeout(r, 400));
-                  await loadConfigData();
-                } else {
-                  const updatedSettings = { ...org.settings, logo_url: logoUrl };
-                  const { error } = await supabase!
-                    .from('organizations')
-                    .update({ settings: updatedSettings })
-                    .eq('id', org.id);
-                  if (error) throw error;
-                  await loadConfigData();
-                }
-                setSaveSuccess(true);
-                setTimeout(() => setSaveSuccess(false), 3000);
-              } catch (err: any) {
-                setSaveError(err.message || 'Erro ao salvar logo.');
-              } finally {
-                setSaveLoading(false);
-              }
-            }}>
-              <div className="form-group">
-                <label className="form-label">URL da Logo</label>
-                <div className={styles.inputWrapper}>
-                  <Camera size={16} className={styles.inputIcon} />
-                  <input
-                    type="url"
-                    className="form-control"
-                    style={{ paddingLeft: '2.5rem' }}
-                    placeholder="https://...sua-logo.png"
-                    value={logoUrl}
-                    disabled={!isUserAdmin}
-                    onChange={(e) => setLogoUrl(e.target.value)}
-                  />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {org?.settings?.logo_url ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
+                  <img src={org.settings.logo_url} alt="logo" style={{ maxWidth: '140px', maxHeight: '36px', objectFit: 'contain' }} />
+                  {isUserAdmin && (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                      onClick={async () => {
+                        if (isMockMode) {
+                          mockDb.updateOrgLogo('');
+                          await loadConfigData();
+                        } else {
+                          const updatedSettings = { ...org.settings, logo_url: '' };
+                          await supabase!.from('organizations').update({ settings: updatedSettings }).eq('id', org.id);
+                          await loadConfigData();
+                        }
+                      }}
+                    >
+                      Remover
+                    </button>
+                  )}
                 </div>
-                <span className={styles.helpText}>Link direto da imagem da sua empresa. Ela será redimensionada automaticamente.</span>
-              </div>
-
-              {logoUrl && (
-                <div style={{ marginTop: '0.75rem', marginBottom: '0.75rem' }}>
-                  <img src={logoUrl} alt="preview" style={{ maxWidth: '160px', maxHeight: '44px', borderRadius: '6px', border: '1px solid var(--border-color)', padding: '6px', background: 'var(--bg-card)' }} />
+              ) : (
+                <div style={{ padding: '1.5rem', textAlign: 'center', background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius-md)' }}>
+                  <Camera size={32} style={{ color: 'var(--text-muted)', marginBottom: '0.5rem', opacity: 0.4 }} />
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Nenhuma logo cadastrada</p>
+                  {isUserAdmin && (
+                    <label className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                      <Camera size={14} />
+                      <span>Selecionar Imagem</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        disabled={!isUserAdmin || saveLoading}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 2 * 1024 * 1024) {
+                            alert('A imagem deve ter no máximo 2MB.');
+                            return;
+                          }
+                          setSaveLoading(true);
+                          setSaveError('');
+                          try {
+                            if (isMockMode) {
+                              const reader = new FileReader();
+                              reader.onloadend = async () => {
+                                mockDb.updateOrgLogo(reader.result as string);
+                                await new Promise(r => setTimeout(r, 400));
+                                await loadConfigData();
+                                setSaveSuccess(true);
+                                setTimeout(() => setSaveSuccess(false), 3000);
+                                setSaveLoading(false);
+                              };
+                              reader.readAsDataURL(file);
+                            } else {
+                              const fileExt = file.name.split('.').pop();
+                              const fileName = `logo-${org.id}.${fileExt}`;
+                              const { data: uploadData, error: uploadError } = await supabase!
+                                .storage
+                                .from('Arquivos')
+                                .upload(`logos/${fileName}`, file, { upsert: true });
+                              if (uploadError) throw uploadError;
+                              const { data: { publicUrl } } = supabase!
+                                .storage
+                                .from('Arquivos')
+                                .getPublicUrl(`logos/${fileName}`);
+                              await supabase!
+                                .from('organizations')
+                                .update({ settings: { ...org.settings, logo_url: publicUrl } })
+                                .eq('id', org.id);
+                              await loadConfigData();
+                              setSaveSuccess(true);
+                              setTimeout(() => setSaveSuccess(false), 3000);
+                              setSaveLoading(false);
+                            }
+                          } catch (err: any) {
+                            setSaveError(err.message || 'Erro ao fazer upload da logo.');
+                            setSaveLoading(false);
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
                 </div>
               )}
 
-              {isUserAdmin && (
-                <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }} disabled={saveLoading}>
-                  {saveLoading ? <span className="loading-spinner"></span> : 'Salvar Logo'}
-                </button>
+              {saveSuccess && (
+                <div className={`${styles.alert} ${styles.alertSuccess}`}>
+                  <Check size={16} />
+                  <span>Logo salva com sucesso!</span>
+                </div>
               )}
-            </form>
+              {saveError && (
+                <div className={`${styles.alert} ${styles.alertDanger}`}>
+                  <AlertCircle size={16} />
+                  <span>{saveError}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Card: Optional Features */}

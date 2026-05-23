@@ -365,8 +365,11 @@ export default function DashboardLayout({
               </>
             ) : (
               <div className={styles.mobileLogoRow}>
-                <img src={CRM_BRANDING.logoIcon} alt="BoxHub" className={styles.mobileLogoIcon} />
-                <span className={styles.mobileLogoName}>BoxHub</span>
+                <img
+                  src={theme === 'dark' ? CRM_BRANDING.logoDark : CRM_BRANDING.logoLight}
+                  alt="BoxHub"
+                  className={styles.mobileCrmLogo}
+                />
               </div>
             )}
           </div>

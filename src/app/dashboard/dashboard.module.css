@@ -523,6 +523,12 @@
   color: var(--text-main);
 }
 
+.mobileCrmLogo {
+  max-width: 120px;
+  max-height: 28px;
+  object-fit: contain;
+}
+
 .mobilePoweredBy {
   display: flex;
   align-items: center;
