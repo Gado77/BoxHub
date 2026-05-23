@@ -38,6 +38,7 @@ export default function DashboardLayout({
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
 
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
@@ -376,12 +377,50 @@ export default function DashboardLayout({
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             
-            {user?.role === 'admin' && (
-              <Link href="/dashboard/configuracoes#subscription-plan" className={styles.badgeLink}>
-                <span className="badge badge-success" style={{ padding: '0.15rem 0.5rem', fontSize: '0.65rem', cursor: 'pointer' }}>
-                  {org?.subscription_status === 'trial' ? 'Teste' : 'Pro'}
-                </span>
-              </Link>
+            {user && (
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setIsMobileProfileOpen(!isMobileProfileOpen)}
+                  className={styles.mobileProfileBtn}
+                  title="Meu perfil"
+                >
+                  <div className={styles.mobileProfileAvatar}>
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                    ) : (
+                      user.name ? user.name.charAt(0).toUpperCase() : 'U'
+                    )}
+                  </div>
+                </button>
+
+                {isMobileProfileOpen && (
+                  <>
+                    <div className={styles.mobileProfileOverlay} onClick={() => setIsMobileProfileOpen(false)} />
+                    <div className={`${styles.mobileProfileDropdown} glass`}>
+                      <div className={styles.mobileProfileHeader}>
+                        <div className={styles.mobileProfileAvatarLarge}>
+                          {user.avatar_url ? (
+                            <img src={user.avatar_url} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                          ) : (
+                            user.name ? user.name.charAt(0).toUpperCase() : 'U'
+                          )}
+                        </div>
+                        <div className={styles.mobileProfileInfo}>
+                          <span className={styles.mobileProfileName}>{user.name}</span>
+                          <span className={styles.mobileProfileOrg}>{org?.name || 'Box CEAGESP'}</span>
+                          <span className={styles.mobileProfileRole}>{user.role === 'admin' ? 'Administrador' : 'Vendedor'}</span>
+                        </div>
+                      </div>
+                      <div className={styles.mobileProfileActions}>
+                        <button onClick={handleLogout} className={styles.mobileLogoutBtn}>
+                          <LogOut size={14} />
+                          <span>Sair da Conta</span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </header>
