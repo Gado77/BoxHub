@@ -785,10 +785,18 @@
    right: 0;
    bottom: 0;
    z-index: 998;
-   background: rgba(0, 0, 0, 0.35);
-   backdrop-filter: blur(12px);
-   -webkit-backdrop-filter: blur(12px);
+   background: rgba(0,0,0,0.30);
+   backdrop-filter: blur(24px) saturate(1.8);
+   -webkit-backdrop-filter: blur(24px) saturate(1.8);
+   pointer-events: auto;
+   touch-action: none;
 }
+
+/* Permite o scroll passar por baixo do backdrop */
+.mobileProfileBackdrop {
+   pointer-events: auto !important;
+}
+
 
 .mobileProfileDropdown {
   position: fixed;
