@@ -296,11 +296,13 @@ export default function DashboardLayout({
         <header className={styles.topBar}>
           <h2 className={styles.pageTitle}>{getPageTitle()}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <Link href="/dashboard/configuracoes#subscription-plan" className={styles.badgeLink}>
-              <span className="badge badge-success" style={{ fontWeight: '500', cursor: 'pointer' }}>
-                {org?.subscription_status === 'trial' ? 'Período de Teste' : 'Assinante Pro'}
-              </span>
-            </Link>
+            {user?.role === 'admin' && (
+              <Link href="/dashboard/configuracoes#subscription-plan" className={styles.badgeLink}>
+                <span className="badge badge-success" style={{ fontWeight: '500', cursor: 'pointer' }}>
+                  {org?.subscription_status === 'trial' ? 'Período de Teste' : 'Assinante Pro'}
+                </span>
+              </Link>
+            )}
             
             {/* New Sale Button Desktop */}
             {pathname === '/dashboard' && (
@@ -357,11 +359,13 @@ export default function DashboardLayout({
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             
-            <Link href="/dashboard/configuracoes#subscription-plan" className={styles.badgeLink}>
-              <span className="badge badge-success" style={{ padding: '0.15rem 0.5rem', fontSize: '0.65rem', cursor: 'pointer' }}>
-                {org?.subscription_status === 'trial' ? 'Teste' : 'Pro'}
-              </span>
-            </Link>
+            {user?.role === 'admin' && (
+              <Link href="/dashboard/configuracoes#subscription-plan" className={styles.badgeLink}>
+                <span className="badge badge-success" style={{ padding: '0.15rem 0.5rem', fontSize: '0.65rem', cursor: 'pointer' }}>
+                  {org?.subscription_status === 'trial' ? 'Teste' : 'Pro'}
+                </span>
+              </Link>
+            )}
           </div>
         </header>
 

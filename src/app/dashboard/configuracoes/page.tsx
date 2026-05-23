@@ -569,65 +569,67 @@ export default function ConfiguracoesPage() {
         <div className={styles.rightColumn}>
           
           {/* Card: Billing (Discreet Card) */}
-          <div id="subscription-plan" className={`${styles.card} glass`}>
-            <div className={styles.cardHeader}>
-              <h3 className={styles.cardTitle}>
-                <CreditCard className={styles.titleIcon} size={18} />
-                <span>Assinatura & Plano</span>
-              </h3>
-            </div>
+          {isUserAdmin && (
+            <div id="subscription-plan" className={`${styles.card} glass`}>
+              <div className={styles.cardHeader}>
+                <h3 className={styles.cardTitle}>
+                  <CreditCard className={styles.titleIcon} size={18} />
+                  <span>Assinatura & Plano</span>
+                </h3>
+              </div>
 
-            <div className={styles.billingCard}>
-              <div className={styles.billingInfo}>
-                <div className={styles.billingHeader}>
-                  <div className={styles.planStatus}>
-                    <Crown size={16} style={{ color: org?.subscription_status === 'active' ? 'var(--warning)' : 'var(--text-muted)' }} />
-                    <span className={styles.planNameLabel}>
-                      {org?.subscription_status === 'active' ? 'Plano Pro Ativo' : 'Plano Básico (Trial)'}
+              <div className={styles.billingCard}>
+                <div className={styles.billingInfo}>
+                  <div className={styles.billingHeader}>
+                    <div className={styles.planStatus}>
+                      <Crown size={16} style={{ color: org?.subscription_status === 'active' ? 'var(--warning)' : 'var(--text-muted)' }} />
+                      <span className={styles.planNameLabel}>
+                        {org?.subscription_status === 'active' ? 'Plano Pro Ativo' : 'Plano Básico (Trial)'}
+                      </span>
+                    </div>
+                    <span className={`badge ${org?.subscription_status === 'active' ? 'badge-success' : 'badge-warning'}`}>
+                      {org?.subscription_status === 'active' ? 'Faturamento Ok' : '14 dias restantes'}
                     </span>
                   </div>
-                  <span className={`badge ${org?.subscription_status === 'active' ? 'badge-success' : 'badge-warning'}`}>
-                    {org?.subscription_status === 'active' ? 'Faturamento Ok' : '14 dias restantes'}
-                  </span>
+
+                  <div className={styles.billingPricing}>
+                    <span className={styles.billingPriceSymbol}>R$</span>
+                    <span className={styles.billingPriceVal}>
+                      {org?.subscription_status === 'active' ? '149' : '0'}
+                    </span>
+                    <span className={styles.billingPricePeriod}>/mês</span>
+                  </div>
+
+                  <p className={styles.billingDescText}>
+                    {org?.subscription_status === 'active' 
+                      ? 'Acesso a todos os recursos ilimitados, incluindo emissão de NF-e.' 
+                      : 'Período gratuito de experimentação. Faça o upgrade para liberar todos os recursos.'
+                    }
+                  </p>
                 </div>
 
-                <div className={styles.billingPricing}>
-                  <span className={styles.billingPriceSymbol}>R$</span>
-                  <span className={styles.billingPriceVal}>
-                    {org?.subscription_status === 'active' ? '149' : '0'}
-                  </span>
-                  <span className={styles.billingPricePeriod}>/mês</span>
+                <div className={styles.billingActions}>
+                  {org?.subscription_status === 'active' ? (
+                    <button 
+                      onClick={() => handleUpgradeMock('trial')} 
+                      className="btn-secondary" 
+                      style={{ width: '100%', fontSize: '0.85rem', justifyContent: 'center' }}
+                    >
+                      Mudar para Plano Básico
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => handleUpgradeMock('active')} 
+                      className="btn-primary" 
+                      style={{ width: '100%', fontSize: '0.85rem', justifyContent: 'center' }}
+                    >
+                      Fazer Upgrade para Pro
+                    </button>
+                  )}
                 </div>
-
-                <p className={styles.billingDescText}>
-                  {org?.subscription_status === 'active' 
-                    ? 'Acesso a todos os recursos ilimitados, incluindo emissão de NF-e.' 
-                    : 'Período gratuito de experimentação. Faça o upgrade para liberar todos os recursos.'
-                  }
-                </p>
-              </div>
-
-              <div className={styles.billingActions}>
-                {org?.subscription_status === 'active' ? (
-                  <button 
-                    onClick={() => handleUpgradeMock('trial')} 
-                    className="btn-secondary" 
-                    style={{ width: '100%', fontSize: '0.85rem', justifyContent: 'center' }}
-                  >
-                    Mudar para Plano Básico
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => handleUpgradeMock('active')} 
-                    className="btn-primary" 
-                    style={{ width: '100%', fontSize: '0.85rem', justifyContent: 'center' }}
-                  >
-                    Fazer Upgrade para Pro
-                  </button>
-                )}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Card: Team Directory */}
           <div className={`${styles.card} glass`}>
