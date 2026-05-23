@@ -62,12 +62,9 @@
   display: block;
 }
 
-.byBoxhub {
-  font-size: 0.65rem;
-  font-weight: 400;
-  letter-spacing: 0.3px;
-  padding-left: 0.1rem;
-  margin-top: 0.1rem;
+.crmMiniIcon {
+  color: var(--primary);
+  flex-shrink: 0;
 }
 
 .byBoxhubDark {

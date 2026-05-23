@@ -174,14 +174,9 @@ export default function DashboardLayout({
             {!isCollapsed ? (
               <div className={styles.brandingWrapper}>
                 {org?.settings?.logo_url ? (
-                  <>
-                    <div className={styles.logoContainer}>
-                      <img src={org.settings.logo_url} alt={org?.name || 'Box'} className={styles.companyLogoImg} />
-                    </div>
-                    <span className={`${styles.byBoxhub} ${theme === 'dark' ? styles.byBoxhubDark : styles.byBoxhubLight}`}>
-                      by BoxHub
-                    </span>
-                  </>
+                  <div className={styles.logoContainer}>
+                    <img src={org.settings.logo_url} alt={org?.name || 'Box'} className={styles.companyLogoImg} />
+                  </div>
                 ) : (
                   <div className={styles.logoContainer}>
                     <img
@@ -349,12 +344,7 @@ export default function DashboardLayout({
         <header className={styles.mobileHeader}>
           <div className={styles.mobileBranding}>
             {org?.settings?.logo_url ? (
-              <>
-                <img src={org.settings.logo_url} alt={org?.name || 'Box'} className={styles.mobileLogoImg} />
-                <span className={`${styles.byBoxhub} ${theme === 'dark' ? styles.byBoxhubDark : styles.byBoxhubLight}`}>
-                  by BoxHub
-                </span>
-              </>
+              <img src={org.settings.logo_url} alt={org?.name || 'Box'} className={styles.mobileLogoImg} />
             ) : (
               <img
                 src={theme === 'dark' ? CRM_BRANDING.logoDark : CRM_BRANDING.logoLight}
