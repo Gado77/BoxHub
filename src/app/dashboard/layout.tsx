@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase, isMockMode, mockDb, CRM_BRANDING } from '@/lib/supabase';
@@ -38,8 +38,6 @@ export default function DashboardLayout({
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
-  const profileBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
@@ -381,48 +379,13 @@ export default function DashboardLayout({
             
             {user && (
               <div style={{ position: 'relative' }}>
-                <button
-                  ref={profileBtnRef}
-                  onClick={() => setIsMobileProfileOpen(prev => !prev)}
-                  className={styles.mobileProfileBtn}
-                  title="Meu perfil"
-                >
-                  <div className={styles.mobileProfileAvatar}>
-                    {user.avatar_url ? (
-                      <img src={user.avatar_url} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                    ) : (
-                      user.name ? user.name.charAt(0).toUpperCase() : 'U'
-                    )}
-                  </div>
-                </button>
-
-                {isMobileProfileOpen && (
-                  <>
-                    <div className={styles.mobileProfileBackdrop} onClick={() => setIsMobileProfileOpen(false)} />
-                    <div className={`${styles.mobileProfileDropdown} glass`}>
-                      <div className={styles.mobileProfileHeader}>
-                        <div className={styles.mobileProfileAvatarLarge}>
-                          {user.avatar_url ? (
-                            <img src={user.avatar_url} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                          ) : (
-                            user.name ? user.name.charAt(0).toUpperCase() : 'U'
-                          )}
-                        </div>
-                        <div className={styles.mobileProfileInfo}>
-                          <span className={styles.mobileProfileName}>{user.name}</span>
-                          <span className={styles.mobileProfileOrg}>{org?.name || 'Box CEAGESP'}</span>
-                          <span className={styles.mobileProfileRole}>{user.role === 'admin' ? 'Administrador' : 'Vendedor'}</span>
-                        </div>
-                      </div>
-                      <div className={styles.mobileProfileActions}>
-                        <button onClick={handleLogout} className={styles.mobileLogoutBtn}>
-                          <LogOut size={14} />
-                          <span>Sair da Conta</span>
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
+                <div className={styles.mobileProfileAvatar}>
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    user.name ? user.name.charAt(0).toUpperCase() : 'U'
+                  )}
+                </div>
               </div>
             )}
           </div>
