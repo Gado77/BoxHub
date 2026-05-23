@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase, isMockMode, mockDb, CRM_BRANDING } from '@/lib/supabase';
@@ -39,6 +39,19 @@ export default function DashboardLayout({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setIsMobileProfileOpen(false);
+      }
+    };
+    if (isMobileProfileOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMobileProfileOpen]);
 
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
@@ -395,8 +408,8 @@ export default function DashboardLayout({
 
                 {isMobileProfileOpen && (
                   <>
-                    <div className={styles.mobileProfileOverlay} onClick={() => setIsMobileProfileOpen(false)} />
-                    <div className={`${styles.mobileProfileDropdown} glass`}>
+                    <div className={styles.mobileProfileBackdrop} />
+                    <div ref={profileRef} className={`${styles.mobileProfileDropdown} glass`}>
                       <div className={styles.mobileProfileHeader}>
                         <div className={styles.mobileProfileAvatarLarge}>
                           {user.avatar_url ? (
@@ -535,6 +548,29 @@ export default function DashboardLayout({
                   <span className={styles.menuGridItemLabel}>Ajustes</span>
                 </Link>
               </div>
+
+              {user && (
+                <div className={styles.menuProfileCard}>
+                  <div className={styles.menuProfileHeader}>
+                    <div className={styles.menuProfileAvatar}>
+                      {user.avatar_url ? (
+                        <img src={user.avatar_url} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                      ) : (
+                        user.name ? user.name.charAt(0).toUpperCase() : 'U'
+                      )}
+                    </div>
+                    <div className={styles.menuProfileInfo}>
+                      <span className={styles.menuProfileName}>{user.name}</span>
+                      <span className={styles.menuProfileOrg}>{org?.name || 'Box CEAGESP'}</span>
+                    </div>
+                    <span className={styles.menuProfileRole}>{user.role === 'admin' ? 'Admin' : 'Vendedor'}</span>
+                  </div>
+                  <button onClick={handleLogout} className={styles.menuLogoutBtn}>
+                    <LogOut size={16} />
+                    <span>Sair</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
