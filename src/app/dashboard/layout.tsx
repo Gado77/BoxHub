@@ -136,11 +136,22 @@ export default function DashboardLayout({
     }
   };
 
-  const openNewSale = () => {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('open-new-sale-modal'));
-    }
-  };
+   const openNewSale = () => {
+     if (typeof window !== 'undefined') {
+       window.dispatchEvent(new CustomEvent('open-new-sale-modal'));
+     }
+   };
+
+   useEffect(() => {
+     if (isMobileProfileOpen) {
+       document.body.style.overflow = 'hidden';
+     } else {
+       document.body.style.overflow = '';
+     }
+     return () => {
+       document.body.style.overflow = '';
+     };
+   }, [isMobileProfileOpen]);
 
   if (loading) {
     return (

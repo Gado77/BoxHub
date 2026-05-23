@@ -779,15 +779,15 @@
 }
 
 .mobileProfileBackdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 998;
-  background: rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+   position: fixed;
+   top: 0;
+   left: 0;
+   right: 0;
+   bottom: 0;
+   z-index: 998;
+   background: rgba(0, 0, 0, 0.35);
+   backdrop-filter: blur(12px);
+   -webkit-backdrop-filter: blur(12px);
 }
 
 .mobileProfileDropdown {
