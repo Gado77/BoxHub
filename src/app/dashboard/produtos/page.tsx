@@ -680,7 +680,6 @@ export default function ProdutosPage() {
                   className="form-control" 
                   value={newType} 
                   onChange={(e) => setNewType(e.target.value as 'fruta' | 'legume')}
-                  style={{ height: '38px', background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
                 >
                   <option value="fruta">Fruta</option>
                   <option value="legume">Legume</option>
@@ -747,7 +746,6 @@ export default function ProdutosPage() {
                   className="form-control" 
                   value={editType} 
                   onChange={(e) => setEditType(e.target.value as 'fruta' | 'legume')}
-                  style={{ height: '38px', background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
                 >
                   <option value="fruta">Fruta</option>
                   <option value="legume">Legume</option>
