@@ -40,6 +40,9 @@ export default function ConfiguracoesPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState('');
 
+  // Logo State
+  const [logoUrl, setLogoUrl] = useState('');
+
   // Modal Visibility States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -77,6 +80,7 @@ export default function ConfiguracoesPage() {
         setLocation(currentOrg.settings?.location || '');
         setPhone(currentOrg.settings?.phone || '');
         setDefaultLimit(currentOrg.settings?.default_limit || 0);
+        setLogoUrl(currentOrg.settings?.logo_url || '');
       } else {
         const { data: { session } } = await supabase!.auth.getSession();
         if (!session) return;
@@ -96,6 +100,7 @@ export default function ConfiguracoesPage() {
           setLocation(profile.organizations.settings?.location || '');
           setPhone(profile.organizations.settings?.phone || '');
           setDefaultLimit(profile.organizations.settings?.default_limit || 0);
+          setLogoUrl(profile.organizations.settings?.logo_url || '');
 
           const { data: profiles } = await supabase!
             .from('profiles')
@@ -529,6 +534,74 @@ export default function ConfiguracoesPage() {
               {isUserAdmin && (
                 <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }} disabled={saveLoading}>
                   {saveLoading ? <span className="loading-spinner"></span> : 'Salvar Alterações'}
+                </button>
+              )}
+            </form>
+          </div>
+
+          {/* Card: Logo da Empresa */}
+          <div className={`${styles.card} glass`}>
+            <div className={styles.cardHeader}>
+              <h3 className={styles.cardTitle}>
+                <Camera className={styles.titleIcon} size={18} />
+                <span>Logo da Empresa</span>
+              </h3>
+              <p className={styles.cardSubtitle}>Sua marca aparece na sidebar, mobile header e página de boas-vindas.</p>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setSaveLoading(true);
+              setSaveError('');
+              setSaveSuccess(false);
+              try {
+                if (isMockMode) {
+                  mockDb.updateOrgLogo(logoUrl);
+                  await new Promise(r => setTimeout(r, 400));
+                  await loadConfigData();
+                } else {
+                  const updatedSettings = { ...org.settings, logo_url: logoUrl };
+                  const { error } = await supabase!
+                    .from('organizations')
+                    .update({ settings: updatedSettings })
+                    .eq('id', org.id);
+                  if (error) throw error;
+                  await loadConfigData();
+                }
+                setSaveSuccess(true);
+                setTimeout(() => setSaveSuccess(false), 3000);
+              } catch (err: any) {
+                setSaveError(err.message || 'Erro ao salvar logo.');
+              } finally {
+                setSaveLoading(false);
+              }
+            }}>
+              <div className="form-group">
+                <label className="form-label">URL da Logo</label>
+                <div className={styles.inputWrapper}>
+                  <Camera size={16} className={styles.inputIcon} />
+                  <input
+                    type="url"
+                    className="form-control"
+                    style={{ paddingLeft: '2.5rem' }}
+                    placeholder="https://...sua-logo.png"
+                    value={logoUrl}
+                    disabled={!isUserAdmin}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                  />
+                </div>
+                <span className={styles.helpText}>Link direto da imagem da sua empresa. Ela será redimensionada automaticamente.</span>
+              </div>
+
+              {logoUrl && (
+                <div style={{ marginTop: '0.75rem', marginBottom: '0.75rem' }}>
+                  <img src={logoUrl} alt="preview" style={{ maxWidth: '160px', maxHeight: '44px', borderRadius: '6px', border: '1px solid var(--border-color)', padding: '6px', background: 'var(--bg-card)' }} />
+                </div>
+              )}
+
+              {isUserAdmin && (
+                <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }} disabled={saveLoading}>
+                  {saveLoading ? <span className="loading-spinner"></span> : 'Salvar Logo'}
                 </button>
               )}
             </form>

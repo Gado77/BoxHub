@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "BoxHub — Gestão que colhe resultados",
   description: "SaaS de gestão de vendas e CRM para comerciantes de frutas do CEAGESP. Controle de fiado, vendas e relatórios em tempo real.",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

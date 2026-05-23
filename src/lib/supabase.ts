@@ -17,17 +17,27 @@ export const supabase = !isMockMode
   ? createSupabaseClient(supabaseUrl, supabaseAnonKey) 
   : null;
 
+interface OrgSettings {
+  estoque_ativo: boolean;
+  location?: string;
+  phone?: string;
+  default_limit?: number;
+  logo_url?: string;
+}
+
+// BoxHub CRM branding — theme-aware logos (set your 3 links aqui)
+export const CRM_BRANDING = {
+  logoDark: 'https://jblkxmtsfbsmjsutujsj.supabase.co/storage/v1/object/public/Arquivos/boxhub-black-theme.png',
+  logoLight: 'https://jblkxmtsfbsmjsutujsj.supabase.co/storage/v1/object/public/Arquivos/boxhub-white-theme.png',
+  logoIcon: 'https://jblkxmtsfbsmjsutujsj.supabase.co/storage/v1/object/public/Arquivos/boxhub-icone.png',
+} as const;
+
 interface Organization {
   id: string;
   name: string;
   stripe_customer_id: string | null;
   subscription_status: 'trial' | 'active' | 'past_due' | 'canceled';
-  settings: { 
-    estoque_ativo: boolean;
-    location?: string;
-    phone?: string;
-    default_limit?: number;
-  };
+  settings: OrgSettings;
 }
 
 interface Profile {
@@ -538,11 +548,20 @@ export const mockDb = {
     return org;
   },
 
-  updateOrg: (name: string, settingsData: { estoque_ativo: boolean; location?: string; phone?: string; default_limit?: number }) => {
+  updateOrg: (name: string, settingsData: Partial<OrgSettings>) => {
     const orgs = mockStore.getOrgs();
     const org = mockDb.getOrg();
     org.name = name;
     org.settings = { ...org.settings, ...settingsData };
+    const updated = orgs.map(o => o.id === org.id ? org : o);
+    mockStore.saveOrgs(updated);
+    return org;
+  },
+
+  updateOrgLogo: (logoUrl: string) => {
+    const orgs = mockStore.getOrgs();
+    const org = mockDb.getOrg();
+    org.settings = { ...org.settings, logo_url: logoUrl };
     const updated = orgs.map(o => o.id === org.id ? org : o);
     mockStore.saveOrgs(updated);
     return org;

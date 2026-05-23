@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { supabase, isMockMode, mockDb } from '@/lib/supabase';
+import { supabase, isMockMode, mockDb, CRM_BRANDING } from '@/lib/supabase';
 import { 
   LayoutDashboard, 
   Users, 
@@ -172,15 +172,36 @@ export default function DashboardLayout({
         <div className={styles.sidebarHeader}>
           <div className={styles.sidebarHeaderTop}>
             {!isCollapsed ? (
-              <div className={styles.logoContainer}>
-                <Sprout className={styles.logoIcon} size={26} />
-                <span className={styles.logoText}>
-                  Box<span className={styles.logoHighlight}>Hub</span>
-                </span>
+              <div className={styles.brandingWrapper}>
+                {org?.settings?.logo_url ? (
+                  <>
+                    <div className={styles.logoContainer}>
+                      <img src={org.settings.logo_url} alt={org?.name || 'Box'} className={styles.companyLogoImg} />
+                    </div>
+                    <div className={styles.poweredBy}>
+                      <img
+                        src={theme === 'dark' ? CRM_BRANDING.logoDark : CRM_BRANDING.logoLight}
+                        alt="BoxHub"
+                        className={styles.crmMiniLogo}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className={styles.logoContainer}>
+                    <img
+                      src={theme === 'dark' ? CRM_BRANDING.logoDark : CRM_BRANDING.logoLight}
+                      alt="BoxHub"
+                      className={styles.crmFullLogo}
+                    />
+                  </div>
+                )}
               </div>
             ) : (
               <div className={styles.logoContainerCollapsed}>
-                <Sprout className={styles.logoIcon} size={24} />
+                <div className={styles.collapsedLogoStack}>
+                  <img src={CRM_BRANDING.logoIcon} alt="" className={styles.companyIconImg} />
+                  <span className={styles.crmMiniBadge}>BH</span>
+                </div>
               </div>
             )}
             
@@ -330,11 +351,24 @@ export default function DashboardLayout({
 
         {/* Mobile Header (Mobile Only) */}
         <header className={styles.mobileHeader}>
-          <div className={styles.logoContainer}>
-            <Sprout className={styles.logoIcon} size={20} />
-            <span className={styles.logoText} style={{ fontSize: '1.15rem' }}>
-              Box<span className={styles.logoHighlight}>Hub</span>
-            </span>
+          <div className={styles.mobileBranding}>
+            {org?.settings?.logo_url ? (
+              <>
+                <div className={styles.mobileLogoRow}>
+                  <img src={org.settings.logo_url} alt={org?.name || 'Box'} className={styles.mobileLogoImg} />
+                  <span className={styles.mobileLogoName}>{org?.name}</span>
+                </div>
+                <div className={styles.mobilePoweredBy}>
+                  <img src={CRM_BRANDING.logoIcon} alt="BoxHub" style={{ width: '12px', height: '12px' }} />
+                  <span>BoxHub</span>
+                </div>
+              </>
+            ) : (
+              <div className={styles.mobileLogoRow}>
+                <img src={CRM_BRANDING.logoIcon} alt="BoxHub" className={styles.mobileLogoIcon} />
+                <span className={styles.mobileLogoName}>BoxHub</span>
+              </div>
+            )}
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

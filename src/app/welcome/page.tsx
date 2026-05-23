@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, isMockMode } from '@/lib/supabase';
+import { supabase, isMockMode, CRM_BRANDING } from '@/lib/supabase';
 import { Sprout, Lock, AlertCircle, Check, Key } from 'lucide-react';
 import styles from './welcome.module.css';
 
@@ -113,10 +113,25 @@ export default function WelcomePage() {
       <div className={`${styles.container} glass animate-fade-in`}>
         <div className={styles.header}>
           <div className={styles.logoContainer}>
-            <Sprout className={styles.logoIcon} size={28} />
-            <span className={styles.logoText}>
-              Box<span className={styles.logoHighlight}>Hub</span>
-            </span>
+            {profile?.organizations?.settings?.logo_url ? (
+              <>
+                <img
+                  src={profile.organizations.settings.logo_url}
+                  alt={profile.organizations.name}
+                  style={{ maxWidth: '160px', maxHeight: '40px', objectFit: 'contain' }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
+                  <img src={CRM_BRANDING.logoIcon} alt="BoxHub" style={{ width: '12px', height: '12px' }} />
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', opacity: 0.7 }}>BoxHub</span>
+                </div>
+              </>
+            ) : (
+              <img
+                src={CRM_BRANDING.logoLight}
+                alt="BoxHub"
+                style={{ maxWidth: '180px', maxHeight: '48px', objectFit: 'contain' }}
+              />
+            )}
           </div>
           <h2 className={styles.title}>Definir Senha de Acesso</h2>
           {profile && (
