@@ -178,13 +178,9 @@ export default function DashboardLayout({
                     <div className={styles.logoContainer}>
                       <img src={org.settings.logo_url} alt={org?.name || 'Box'} className={styles.companyLogoImg} />
                     </div>
-                    <div className={styles.poweredBy}>
-                      <img
-                        src={theme === 'dark' ? CRM_BRANDING.logoDark : CRM_BRANDING.logoLight}
-                        alt="BoxHub"
-                        className={styles.crmMiniLogo}
-                      />
-                    </div>
+                    <span className={`${styles.byBoxhub} ${theme === 'dark' ? styles.byBoxhubDark : styles.byBoxhubLight}`}>
+                      by BoxHub
+                    </span>
                   </>
                 ) : (
                   <div className={styles.logoContainer}>
@@ -354,23 +350,17 @@ export default function DashboardLayout({
           <div className={styles.mobileBranding}>
             {org?.settings?.logo_url ? (
               <>
-                <div className={styles.mobileLogoRow}>
-                  <img src={org.settings.logo_url} alt={org?.name || 'Box'} className={styles.mobileLogoImg} />
-                  <span className={styles.mobileLogoName}>{org?.name}</span>
-                </div>
-                <div className={styles.mobilePoweredBy}>
-                  <img src={CRM_BRANDING.logoIcon} alt="BoxHub" style={{ width: '12px', height: '12px' }} />
-                  <span>BoxHub</span>
-                </div>
+                <img src={org.settings.logo_url} alt={org?.name || 'Box'} className={styles.mobileLogoImg} />
+                <span className={`${styles.byBoxhub} ${theme === 'dark' ? styles.byBoxhubDark : styles.byBoxhubLight}`}>
+                  by BoxHub
+                </span>
               </>
             ) : (
-              <div className={styles.mobileLogoRow}>
-                <img
-                  src={theme === 'dark' ? CRM_BRANDING.logoDark : CRM_BRANDING.logoLight}
-                  alt="BoxHub"
-                  className={styles.mobileCrmLogo}
-                />
-              </div>
+              <img
+                src={theme === 'dark' ? CRM_BRANDING.logoDark : CRM_BRANDING.logoLight}
+                alt="BoxHub"
+                className={styles.mobileCrmLogo}
+              />
             )}
           </div>
           
