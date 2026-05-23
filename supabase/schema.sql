@@ -225,6 +225,42 @@ create policy "Users can manage ai insights"
 
 
 -- =========================================================================
+-- STORAGE: Bucket policies for logo uploads
+-- =========================================================================
+
+-- Ensure the Arquivos bucket exists (ignore if already present)
+insert into storage.buckets (id, name, public)
+values ('Arquivos', 'Arquivos', true)
+on conflict (id) do nothing;
+
+-- Allow public read access to all files in Arquivos
+create policy "Public read access for Arquivos"
+on storage.objects for select
+to public
+using (bucket_id = 'Arquivos');
+
+-- Allow authenticated users to upload files to Arquivos/logos/
+create policy "Authenticated users can upload logos"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'Arquivos'
+  and (storage.foldername(name))[1] = 'logos'
+);
+
+-- Allow authenticated users to update/delete their own logos
+create policy "Authenticated users can manage logos"
+on storage.objects for update
+to authenticated
+using (bucket_id = 'Arquivos' and (storage.foldername(name))[1] = 'logos')
+with check (bucket_id = 'Arquivos' and (storage.foldername(name))[1] = 'logos');
+
+create policy "Authenticated users can delete logos"
+on storage.objects for delete
+to authenticated
+using (bucket_id = 'Arquivos' and (storage.foldername(name))[1] = 'logos');
+
+-- =========================================================================
 -- INDEXES FOR PERFORMANCE
 -- =========================================================================
 create index if not exists idx_profiles_org_id on public.profiles(organization_id);
