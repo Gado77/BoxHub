@@ -807,9 +807,11 @@
   max-width: calc(100vw - 2rem);
   padding: 1rem;
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
-  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.50);
+  background: rgba(16, 23, 42, 0.30);
+  backdrop-filter: blur(32px) saturate(1.9);
+  -webkit-backdrop-filter: blur(32px) saturate(1.9);
   animation: fadeIn var(--transition-fast) forwards;
 }
 
