@@ -12,6 +12,12 @@
   align-items: stretch;
 }
 
+@media (min-width: 901px) {
+  .topRow {
+    height: calc(100vh - 140px);
+  }
+}
+
 /* Left Column: Product List */
 .leftCol {
   display: flex;
@@ -205,6 +211,18 @@
   flex-direction: column;
   gap: 1.25rem;
   height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.5rem;
+}
+
+.detailCard::-webkit-scrollbar {
+  width: 4px;
+}
+
+.detailCard::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
 }
 
 .detailHeader {
