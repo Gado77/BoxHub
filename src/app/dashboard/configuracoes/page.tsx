@@ -61,6 +61,14 @@ export default function ConfiguracoesPage() {
   const [editMemberRole, setEditMemberRole] = useState<'admin' | 'vendedor'>('vendedor');
   const [invitedViaEmail, setInvitedViaEmail] = useState(false);
 
+  // Image Cropping States
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [cropImageUrl, setCropImageUrl] = useState('');
+  const [zoom, setZoom] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
   // Modal actions status
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState('');
@@ -381,20 +389,77 @@ export default function ConfiguracoesPage() {
     return parts[0].substring(0, 2).toUpperCase();
   };
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Dragging event handlers for the cropper using PointerEvents (responsive mouse + touch)
+  const handlePointerDown = (e: React.PointerEvent) => {
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    });
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
 
-    if (file.size > 1024 * 1024) {
-      alert('A imagem deve ter no máximo 1MB.');
-      return;
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    setPosition({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    setIsDragging(false);
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+  };
+
+  const handleConfirmCrop = () => {
+    const imageEl = document.getElementById('cropPreviewImage') as HTMLImageElement;
+    if (!imageEl) return;
+
+    setSaveLoading(true);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 500;
+    canvas.height = 500;
+    const ctx = canvas.getContext('2d');
+
+    if (ctx) {
+      // 1. Fill background with white
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 500, 500);
+
+      // 2. Translate origin to center of canvas
+      ctx.translate(250, 250);
+
+      // 3. Apply position offsets and zoom scale
+      // Viewport size on screen is 250px. Canvas size is 500px.
+      // So multiplier is 500 / 250 = 2.
+      const scaleMultiplier = 500 / 250;
+      ctx.translate(position.x * scaleMultiplier, position.y * scaleMultiplier);
+      ctx.scale(zoom * scaleMultiplier, zoom * scaleMultiplier);
+
+      // 4. Calculate cover dimensions centered
+      const imgRatio = imageEl.naturalWidth / imageEl.naturalHeight;
+      let initialWidth = 250;
+      let initialHeight = 250;
+      if (imgRatio > 1) {
+        initialWidth = 250 * imgRatio;
+      } else {
+        initialHeight = 250 / imgRatio;
+      }
+
+      ctx.drawImage(
+        imageEl,
+        -initialWidth / 2,
+        -initialHeight / 2,
+        initialWidth,
+        initialHeight
+      );
     }
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64String = reader.result as string;
-      
-      setSaveLoading(true);
+    const base64String = canvas.toDataURL('image/jpeg', 0.90);
+
+    const saveCroppedAvatar = async () => {
       try {
         if (isMockMode) {
           const profiles = mockStore.getProfiles();
@@ -408,18 +473,18 @@ export default function ConfiguracoesPage() {
         } else {
           const { error } = await supabase!
             .from('profiles')
-            .update({
-              avatar_url: base64String
-            })
+            .update({ avatar_url: base64String })
             .eq('id', currentUser?.id);
 
           if (error) throw error;
           await loadConfigData();
         }
-        
+
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('profile-updated'));
         }
+
+        setIsCropModalOpen(false);
       } catch (err) {
         console.error('Error updating avatar:', err);
         alert('Erro ao atualizar foto de perfil.');
@@ -427,7 +492,23 @@ export default function ConfiguracoesPage() {
         setSaveLoading(false);
       }
     };
+
+    saveCroppedAvatar();
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCropImageUrl(reader.result as string);
+      setPosition({ x: 0, y: 0 });
+      setZoom(1);
+      setIsCropModalOpen(true);
+    };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   if (loading) {
@@ -1147,6 +1228,81 @@ export default function ConfiguracoesPage() {
               </button>
               <button type="button" className="btn-danger" onClick={handleResetSimulator} disabled={modalLoading}>
                 {modalLoading ? <span className="loading-spinner"></span> : 'Confirmar Reinicialização'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: PHOTO CROP EDITOR */}
+      {isCropModalOpen && (
+        <div className={styles.modalOverlay}>
+          <div className={`${styles.modalContent} glass`} style={{ maxWidth: '400px' }}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>Editar Foto de Perfil</h3>
+              <button 
+                className={styles.modalCloseBtn} 
+                onClick={() => setIsCropModalOpen(false)}
+                disabled={saveLoading}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className={styles.cropContainer}>
+              <div 
+                className={styles.cropViewport}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+              >
+                <img 
+                  id="cropPreviewImage"
+                  src={cropImageUrl} 
+                  alt="Recorte" 
+                  className={styles.cropImage}
+                  style={{
+                    transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px) scale(${zoom})`,
+                  }}
+                  draggable={false}
+                />
+                <div className={styles.cropGridOverlay}></div>
+                <div className={styles.cropGridLines}></div>
+              </div>
+
+              <div className={styles.zoomControls}>
+                <span className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Zoom</span>
+                <div className={styles.zoomSliderWrapper}>
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="3" 
+                    step="0.01" 
+                    value={zoom}
+                    onChange={(e) => setZoom(parseFloat(e.target.value))}
+                    className={styles.zoomSlider}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button 
+                type="button" 
+                className="btn-secondary" 
+                onClick={() => setIsCropModalOpen(false)} 
+                disabled={saveLoading}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button" 
+                className="btn-primary" 
+                onClick={handleConfirmCrop} 
+                disabled={saveLoading}
+              >
+                {saveLoading ? <span className="loading-spinner"></span> : 'Confirmar'}
               </button>
             </div>
           </div>
