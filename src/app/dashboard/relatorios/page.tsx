@@ -98,40 +98,80 @@ export default function RelatoriosPage() {
     loadData();
   }, []);
 
-  // Filter sales dynamically by timeRange
+  // Calculate date ranges for the current and previous period of same duration
+  const dateRanges = useMemo(() => {
+    const now = new Date();
+    const currentCutoff = new Date();
+    const prevCutoff = new Date();
+    
+    if (timeRange === '7days') {
+      currentCutoff.setDate(now.getDate() - 7);
+      prevCutoff.setDate(now.getDate() - 14);
+      return { currentCutoff, prevCutoff, hasPrev: true, days: 7 };
+    } else if (timeRange === '30days') {
+      currentCutoff.setDate(now.getDate() - 30);
+      prevCutoff.setDate(now.getDate() - 60);
+      return { currentCutoff, prevCutoff, hasPrev: true, days: 30 };
+    }
+    return { currentCutoff: null, prevCutoff: null, hasPrev: false, days: 0 };
+  }, [timeRange]);
+
+  // Filter sales dynamically by timeRange (Current Period)
   const filteredSales = useMemo(() => {
     const activeSales = sales.filter(s => !s.is_canceled);
-    if (timeRange === '7days') {
-      const cutOff = new Date();
-      cutOff.setDate(cutOff.getDate() - 7);
-      return activeSales.filter(s => new Date(s.created_at) >= cutOff);
-    } else if (timeRange === '30days') {
-      const cutOff = new Date();
-      cutOff.setDate(cutOff.getDate() - 30);
-      return activeSales.filter(s => new Date(s.created_at) >= cutOff);
-    }
-    return activeSales;
-  }, [sales, timeRange]);
+    const { currentCutoff } = dateRanges;
+    if (!currentCutoff) return activeSales;
+    return activeSales.filter(s => new Date(s.created_at) >= currentCutoff);
+  }, [sales, dateRanges]);
 
-  // Filter items corresponding to active sales
+  // Filter sales for the Previous Period
+  const previousSales = useMemo(() => {
+    const activeSales = sales.filter(s => !s.is_canceled);
+    const { currentCutoff, prevCutoff, hasPrev } = dateRanges;
+    if (!hasPrev || !currentCutoff || !prevCutoff) return [];
+    return activeSales.filter(s => {
+      const d = new Date(s.created_at);
+      return d >= prevCutoff && d < currentCutoff;
+    });
+  }, [sales, dateRanges]);
+
+  // Filter items corresponding to active sales in the current period
   const filteredItems = useMemo(() => {
     const activeSaleIds = new Set(filteredSales.map(s => s.id));
     return items.filter(item => activeSaleIds.has(item.sale_id));
   }, [items, filteredSales]);
 
+  // Filter items corresponding to active sales in the previous period
+  const previousItems = useMemo(() => {
+    const activeSaleIds = new Set(previousSales.map(s => s.id));
+    return items.filter(item => activeSaleIds.has(item.sale_id));
+  }, [items, previousSales]);
+
   const stats = useMemo(() => {
-    // Total Billing
+    // Helper to calculate percentage change
+    const getPercentChange = (current: number, previous: number) => {
+      if (previous <= 0) return null;
+      return ((current - previous) / previous) * 100;
+    };
+
+    // --- CURRENT PERIOD STATS ---
     const totalBilling = filteredSales.reduce((sum, s) => sum + Number(s.total_amount), 0);
-    
-    // Total sales count
     const salesCount = filteredSales.length;
-    
-    // Ticket Medio
     const averageTicket = salesCount > 0 ? totalBilling / salesCount : 0;
-    
-    // Total boxes sold
     const totalBoxes = filteredItems.reduce((sum, item) => sum + Number(item.quantity), 0);
-    
+
+    // --- PREVIOUS PERIOD STATS ---
+    const totalBillingPrev = previousSales.reduce((sum, s) => sum + Number(s.total_amount), 0);
+    const salesCountPrev = previousSales.length;
+    const averageTicketPrev = salesCountPrev > 0 ? totalBillingPrev / salesCountPrev : 0;
+    const totalBoxesPrev = previousItems.reduce((sum, item) => sum + Number(item.quantity), 0);
+
+    // --- COMPARISONS ---
+    const billingChange = getPercentChange(totalBilling, totalBillingPrev);
+    const ticketChange = getPercentChange(averageTicket, averageTicketPrev);
+    const boxesChange = getPercentChange(totalBoxes, totalBoxesPrev);
+    const salesCountChange = getPercentChange(salesCount, salesCountPrev);
+
     // Client map name helper
     const getClientNameById = (clientId: string | null) => {
       if (!clientId) return 'Venda Direta';
@@ -139,7 +179,7 @@ export default function RelatoriosPage() {
       return c ? c.name : 'Cliente Deletado';
     };
 
-    // Client spends
+    // Client spends in current period
     const clientSpendsMap: Record<string, { name: string, totalSpent: number, salesCount: number }> = {};
     filteredSales.forEach(s => {
       const name = getClientNameById(s.client_id);
@@ -150,9 +190,30 @@ export default function RelatoriosPage() {
       clientSpendsMap[name].salesCount += 1;
     });
 
+    // Client spends in previous period
+    const clientSpendsPrevMap: Record<string, number> = {};
+    previousSales.forEach(s => {
+      const name = getClientNameById(s.client_id);
+      clientSpendsPrevMap[name] = (clientSpendsPrevMap[name] || 0) + Number(s.total_amount);
+    });
+
     const topClients = Object.values(clientSpendsMap)
       .sort((a, b) => b.totalSpent - a.totalSpent)
-      .slice(0, 5);
+      .slice(0, 5)
+      .map(c => {
+        const prevSpent = clientSpendsPrevMap[c.name] || 0;
+        let trend: 'up' | 'down' | 'neutral' = 'neutral';
+        if (prevSpent > 0) {
+          if (c.totalSpent > prevSpent) trend = 'up';
+          else if (c.totalSpent < prevSpent) trend = 'down';
+        } else if (c.totalSpent > 0) {
+          trend = 'up';
+        }
+        return {
+          ...c,
+          trend
+        };
+      });
 
     // Product quantities
     const productQtyMap: Record<string, number> = {};
@@ -169,6 +230,8 @@ export default function RelatoriosPage() {
     // Dynamic Daily Billing map based on selected range
     const numDays = timeRange === '7days' ? 7 : 30; // display max last 30 days for trend
     const dailyBillingMap: Record<string, number> = {};
+    const dailySalesCountMap: Record<string, number> = {};
+    
     const dates = Array.from({ length: numDays }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - i);
@@ -177,32 +240,47 @@ export default function RelatoriosPage() {
 
     dates.forEach(d => {
       dailyBillingMap[d] = 0;
+      dailySalesCountMap[d] = 0;
     });
 
     filteredSales.forEach(s => {
       const dateStr = s.created_at.split('T')[0];
       if (dateStr in dailyBillingMap) {
         dailyBillingMap[dateStr] += Number(s.total_amount);
+        dailySalesCountMap[dateStr] += 1;
       }
     });
 
     const chartData = dates.map(d => ({
       date: d,
-      displayDate: d.split('-').slice(1).reverse().join('/'), // MM/DD -> DD/MM
+      displayDate: d.split('-').slice(1).reverse().join('/'),
       amount: dailyBillingMap[d]
     }));
 
-    // Category Split (Frutas vs Legumes)
-    let fruitBoxes = 0;
-    let legumeBoxes = 0;
-    filteredItems.forEach(item => {
-      const qty = Number(item.quantity);
-      if (item.product_type === 'legume') {
-        legumeBoxes += qty;
-      } else {
-        fruitBoxes += qty;
-      }
+    // Ticket Médio diário trend chart data
+    const ticketChartData = dates.map(d => {
+      const count = dailySalesCountMap[d];
+      const avg = count > 0 ? dailyBillingMap[d] / count : 0;
+      return {
+        date: d,
+        displayDate: d.split('-').slice(1).reverse().join('/'),
+        amount: avg
+      };
     });
+
+    // Best weekday volume grouping Seg..Dom
+    const weekdaysFaturamento = Array(7).fill(0);
+    filteredSales.forEach(s => {
+      const d = new Date(s.created_at);
+      const day = d.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const mappedIdx = day === 0 ? 6 : day - 1; // Map Sunday to index 6, Monday to index 0, etc.
+      weekdaysFaturamento[mappedIdx] += Number(s.total_amount);
+    });
+
+    const weekdaysData = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'].map((label, idx) => ({
+      label,
+      amount: weekdaysFaturamento[idx]
+    }));
 
     // Payment Methods Split
     let pixAmount = 0;
@@ -251,19 +329,27 @@ export default function RelatoriosPage() {
       topClients,
       topProducts,
       chartData,
-      categorySplit: { fruitBoxes, legumeBoxes },
+      ticketChartData,
+      weekdaysData,
       payments: { pixAmount, moneyAmount, fiadoAmount },
-      topSellers
+      topSellers,
+      comparisons: {
+        hasPrev: dateRanges.hasPrev && previousSales.length > 0,
+        billingChange,
+        ticketChange,
+        boxesChange,
+        salesCountChange
+      }
     };
-  }, [filteredSales, filteredItems, clients, profiles, timeRange]);
+  }, [filteredSales, filteredItems, previousSales, previousItems, clients, profiles, timeRange, dateRanges]);
 
-  // Points for native SVG Line Chart
+  // Points for native SVG Line Chart (Faturamento)
   const lineChartPoints = useMemo(() => {
     const maxVal = Math.max(...stats.chartData.map(d => d.amount), 500);
     const len = stats.chartData.length;
     const points = stats.chartData.map((d, i) => ({
-      x: 50 + (i * (395 / (len - 1))), // Scales horizontally dynamically
-      y: 180 - (d.amount / maxVal * 140) // 180 is baseline, max height is 140
+      x: 50 + (i * (395 / (len - 1))),
+      y: 180 - (d.amount / maxVal * 140)
     }));
 
     let linePath = '';
@@ -282,6 +368,31 @@ export default function RelatoriosPage() {
     };
   }, [stats.chartData]);
 
+  // Points for native SVG Line Chart (Ticket Médio)
+  const ticketChartPoints = useMemo(() => {
+    const maxVal = Math.max(...stats.ticketChartData.map(d => d.amount), 100);
+    const len = stats.ticketChartData.length;
+    const points = stats.ticketChartData.map((d, i) => ({
+      x: 50 + (i * (395 / (len - 1))),
+      y: 180 - (d.amount / maxVal * 140)
+    }));
+
+    let linePath = '';
+    let areaPath = '';
+
+    if (points.length > 0) {
+      linePath = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+      areaPath = `${linePath} L ${points[points.length - 1].x} 180 L ${points[0].x} 180 Z`;
+    }
+
+    return {
+      points,
+      linePath,
+      areaPath,
+      maxVal
+    };
+  }, [stats.ticketChartData]);
+
   // Max value for Bar Chart
   const maxBarQty = useMemo(() => {
     return Math.max(...stats.topProducts.map(p => p.qty), 1);
@@ -297,15 +408,35 @@ export default function RelatoriosPage() {
 
   const hasSales = sales.filter(s => !s.is_canceled).length > 0;
 
-  // Calculate split values
-  const totalCategoryBoxes = stats.categorySplit.fruitBoxes + stats.categorySplit.legumeBoxes;
-  const fruitPercent = totalCategoryBoxes > 0 ? (stats.categorySplit.fruitBoxes / totalCategoryBoxes) * 100 : 50;
-  const legumePercent = totalCategoryBoxes > 0 ? (stats.categorySplit.legumeBoxes / totalCategoryBoxes) * 100 : 50;
+  // Compact formatter for money labels in charts
+  const formatChartValue = (value: number) => {
+    if (value >= 1000) {
+      return `R$ ${(value / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}k`;
+    }
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  };
 
+  // Morning summary details
+  const bestWeekday = stats.weekdaysData.reduce((best, current) => current.amount > best.amount ? current : best, stats.weekdaysData[0]);
+  const bestDayName = bestWeekday.amount > 0 ? (
+    bestWeekday.label === 'Seg' ? 'segunda-feira' :
+    bestWeekday.label === 'Ter' ? 'terça-feira' :
+    bestWeekday.label === 'Qua' ? 'quarta-feira' :
+    bestWeekday.label === 'Qui' ? 'quinta-feira' :
+    bestWeekday.label === 'Sex' ? 'sexta-feira' :
+    bestWeekday.label === 'Sab' ? 'sábado' : 'domingo'
+  ) : 'Nenhum';
+
+  const topClientName = stats.topClients.length > 0 ? stats.topClients[0].name : 'Nenhum';
+
+  // Payment Breakdown rates
   const totalPayments = stats.payments.pixAmount + stats.payments.moneyAmount + stats.payments.fiadoAmount;
   const pixPercent = totalPayments > 0 ? (stats.payments.pixAmount / totalPayments) * 100 : 0;
   const moneyPercent = totalPayments > 0 ? (stats.payments.moneyAmount / totalPayments) * 100 : 0;
   const fiadoPercent = totalPayments > 0 ? (stats.payments.fiadoAmount / totalPayments) * 100 : 0;
+
+  // Max value for weekday horizontal bar chart
+  const maxWeekdayVal = Math.max(...stats.weekdaysData.map(d => d.amount), 1);
 
   return (
     <div className={styles.container}>
@@ -355,8 +486,36 @@ export default function RelatoriosPage() {
             <span>Ir para o Painel</span>
           </Link>
         </div>
+      ) : filteredSales.length === 0 ? (
+        <div className={`glass ${styles.emptyState}`}>
+          <TrendingUp size={48} style={{ color: 'var(--text-muted)', marginBottom: '1rem', opacity: 0.5 }} />
+          <h3>Nenhuma venda encontrada no período</h3>
+          <p>
+            Nenhuma venda encontrada nos últimos {timeRange === '7days' ? '7' : '30'} dias. Tente ampliar o período de análise.
+          </p>
+          <button 
+            className="btn-primary" 
+            style={{ marginTop: '1.25rem', border: 'none', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+            onClick={() => setTimeRange('all')}
+          >
+            <span>Ver Período Completo (Todos)</span>
+          </button>
+        </div>
       ) : (
         <>
+          {/* Resumo Matinal Card */}
+          <div className={`glass ${styles.morningSummaryCard}`}>
+            <div className={styles.morningSummaryHeader}>
+              <span style={{ fontSize: '1.2rem' }}>📊</span>
+              <h3 className={styles.morningSummaryTitle}>Resumo do período selecionado</h3>
+            </div>
+            <p className={styles.morningSummaryText}>
+              Você faturou <strong style={{ color: 'var(--success)' }}>{stats.totalBilling.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong> em <strong>{stats.salesCount} {stats.salesCount === 1 ? 'venda' : 'vendas'}</strong>.
+              {bestDayName !== 'Nenhum' && <> Seu melhor dia foi <strong>{bestDayName}</strong>.</>}
+              {topClientName !== 'Nenhum' && <> <strong>{topClientName}</strong> foi seu cliente mais ativo.</>}
+            </p>
+          </div>
+
           {/* KPI Row */}
           <div className={styles.kpiGrid}>
             <div className={`glass ${styles.kpiCard}`}>
@@ -368,6 +527,14 @@ export default function RelatoriosPage() {
                 <span className={styles.kpiValue}>
                   {stats.totalBilling.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
+                {stats.comparisons.hasPrev && stats.comparisons.billingChange !== null && (
+                  <div className={styles.kpiComparison}>
+                    <span className={stats.comparisons.billingChange >= 0 ? styles.trendUp : styles.trendDown}>
+                      {stats.comparisons.billingChange >= 0 ? '↑' : '↓'} {Math.abs(stats.comparisons.billingChange).toFixed(0)}%
+                    </span>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>vs anterior</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -380,6 +547,14 @@ export default function RelatoriosPage() {
                 <span className={styles.kpiValue}>
                   {stats.averageTicket.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
+                {stats.comparisons.hasPrev && stats.comparisons.ticketChange !== null && (
+                  <div className={styles.kpiComparison}>
+                    <span className={stats.comparisons.ticketChange >= 0 ? styles.trendUp : styles.trendDown}>
+                      {stats.comparisons.ticketChange >= 0 ? '↑' : '↓'} {Math.abs(stats.comparisons.ticketChange).toFixed(0)}%
+                    </span>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>vs anterior</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -392,6 +567,14 @@ export default function RelatoriosPage() {
                 <span className={styles.kpiValue}>
                   {stats.totalBoxes} <span className={styles.kpiUnit}>caixas</span>
                 </span>
+                {stats.comparisons.hasPrev && stats.comparisons.boxesChange !== null && (
+                  <div className={styles.kpiComparison}>
+                    <span className={stats.comparisons.boxesChange >= 0 ? styles.trendUp : styles.trendDown}>
+                      {stats.comparisons.boxesChange >= 0 ? '↑' : '↓'} {Math.abs(stats.comparisons.boxesChange).toFixed(0)}%
+                    </span>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>vs anterior</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -404,6 +587,14 @@ export default function RelatoriosPage() {
                 <span className={styles.kpiValue}>
                   {stats.salesCount} <span className={styles.kpiUnit}>vendas</span>
                 </span>
+                {stats.comparisons.hasPrev && stats.comparisons.salesCountChange !== null && (
+                  <div className={styles.kpiComparison}>
+                    <span className={stats.comparisons.salesCountChange >= 0 ? styles.trendUp : styles.trendDown}>
+                      {stats.comparisons.salesCountChange >= 0 ? '↑' : '↓'} {Math.abs(stats.comparisons.salesCountChange).toFixed(0)}%
+                    </span>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>vs anterior</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -454,7 +645,6 @@ export default function RelatoriosPage() {
                     const amount = stats.chartData[idx].amount;
                     const len = stats.chartData.length;
                     const isPeak = amount === Math.max(...stats.chartData.map(d => d.amount));
-                    // If length > 7, only show value for the peak/highest faturamento day to avoid crowding
                     const showValue = len <= 7 ? amount > 0 : (isPeak && amount > 0);
                     return (
                       <g key={idx}>
@@ -475,7 +665,7 @@ export default function RelatoriosPage() {
                             fill="var(--text-main)" 
                             fontWeight="600"
                           >
-                            {amount >= 1000 ? `R$ ${(amount / 1000).toFixed(1)}k` : `R$ ${amount.toFixed(0)}`}
+                            {formatChartValue(amount)}
                           </text>
                         )}
                       </g>
@@ -485,7 +675,6 @@ export default function RelatoriosPage() {
                   {/* X Axis Labels */}
                   {stats.chartData.map((d, idx) => {
                     const len = stats.chartData.length;
-                    // If range is 30 days or more, only show labels every 5 days to avoid overlap
                     const showLabel = len <= 7 || idx === 0 || idx === len - 1 || idx % Math.ceil(len / 6) === 0;
                     if (!showLabel) return null;
                     return (
@@ -530,11 +719,11 @@ export default function RelatoriosPage() {
                     <line x1="420" y1="15" x2="420" y2="200" stroke="var(--border-color)" strokeDasharray="3 3" />
 
                     {stats.topProducts.map((p, idx) => {
-                      const barWidth = (p.qty / maxBarQty) * 260; // 260px is max length
+                      const barWidth = (p.qty / maxBarQty) * 260;
                       const yPos = 25 + idx * 36;
                       return (
                         <g key={idx}>
-                          {/* Label (Product name) */}
+                          {/* Label */}
                           <text 
                             x="145" 
                             y={yPos + 13} 
@@ -586,49 +775,71 @@ export default function RelatoriosPage() {
             </div>
           </div>
 
-          {/* Distribution Grid (Categories & Payments) */}
-          <div className={styles.distributionGrid}>
-            {/* Category Split */}
+          {/* Three Cards Grid: Weekdays, Compact Payments, Average Ticket Trend */}
+          <div className={styles.threeCardsGrid}>
+            {/* Card A: Melhores dias da semana */}
             <div className={`glass ${styles.chartCard}`}>
               <div className={styles.chartHeader}>
-                <h3 className={styles.chartTitle}>Divisão de Categorias</h3>
-                <span className={styles.chartLegend}>Proporção de vendas de Frutas vs Legumes</span>
+                <h3 className={styles.chartTitle}>Melhores dias da semana</h3>
+                <span className={styles.chartLegend}>Faturamento acumulado por dia</span>
               </div>
-              <div className={styles.splitProgressContainer}>
-                <div className={styles.splitProgressBar}>
-                  <div className={styles.splitBarFrutas} style={{ width: `${fruitPercent}%` }} />
-                  <div className={styles.splitBarLegumes} style={{ width: `${legumePercent}%` }} />
-                </div>
-                <div className={styles.splitStats}>
-                  <div className={styles.splitStatItem}>
-                    <div className={`${styles.splitColorDot} ${styles.splitColorDotFrutas}`} />
-                    <div className={styles.splitStatText}>
-                      <span className={styles.splitStatLabel}>Frutas</span>
-                      <span className={styles.splitStatVal}>
-                        {stats.categorySplit.fruitBoxes} cx <span className={styles.paymentMethodPercent}>({fruitPercent.toFixed(0)}%)</span>
-                      </span>
-                    </div>
-                  </div>
-                  <div className={styles.splitStatItem}>
-                    <div className={`${styles.splitColorDot} ${styles.splitColorDotLegumes}`} />
-                    <div className={styles.splitStatText}>
-                      <span className={styles.splitStatLabel}>Legumes</span>
-                      <span className={styles.splitStatVal}>
-                        {stats.categorySplit.legumeBoxes} cx <span className={styles.paymentMethodPercent}>({legumePercent.toFixed(0)}%)</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
+              <div className={styles.svgContainer}>
+                <svg viewBox="0 0 500 230" width="100%" height="100%" className={styles.svgChart}>
+                  {stats.weekdaysData.map((d, idx) => {
+                    const barWidth = (d.amount / maxWeekdayVal) * 280; // 280px max length
+                    const yPos = 18 + idx * 28;
+                    const isPeak = d.amount === maxWeekdayVal && d.amount > 0;
+                    return (
+                      <g key={idx}>
+                        <text 
+                          x="45" 
+                          y={yPos + 12} 
+                          textAnchor="end" 
+                          fontSize="11.5" 
+                          fill="var(--text-main)" 
+                          fontWeight="600"
+                        >
+                          {d.label}
+                        </text>
+                        <rect 
+                          x="60" 
+                          y={yPos} 
+                          width="280" 
+                          height="14" 
+                          fill="rgba(255, 255, 255, 0.02)" 
+                          rx="3" 
+                        />
+                        <rect 
+                          x="60" 
+                          y={yPos} 
+                          width={Math.max(barWidth, 4)} 
+                          height="14" 
+                          fill={isPeak ? "var(--primary)" : "var(--primary-alpha-30)"} 
+                          rx="3" 
+                        />
+                        <text 
+                          x={60 + barWidth + 10} 
+                          y={yPos + 11} 
+                          fontSize="11" 
+                          fill={isPeak ? "var(--text-main)" : "var(--text-muted)"} 
+                          fontWeight={isPeak ? "700" : "500"}
+                        >
+                          {d.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
               </div>
             </div>
 
-            {/* Payment Methods Breakdown */}
+            {/* Card B: Formas de Pagamento */}
             <div className={`glass ${styles.chartCard}`}>
               <div className={styles.chartHeader}>
                 <h3 className={styles.chartTitle}>Formas de Pagamento</h3>
                 <span className={styles.chartLegend}>Distribuição física do faturamento</span>
               </div>
-              <div className={styles.paymentBreakdownList} style={{ marginTop: '0.5rem' }}>
+              <div className={styles.paymentBreakdownList} style={{ marginTop: '0.25rem' }}>
                 {/* PIX */}
                 <div className={styles.paymentBreakdownItem}>
                   <div className={styles.paymentBreakdownHeader}>
@@ -671,6 +882,111 @@ export default function RelatoriosPage() {
                   </div>
                 </div>
               </div>
+              
+              {/* Alert Warning if fiado > 40% */}
+              {fiadoPercent > 40 && (
+                <div className={styles.paymentWarning}>
+                  <span>⚠️ Alto índice de fiado — mais de 40% das vendas estão a prazo</span>
+                </div>
+              )}
+            </div>
+
+            {/* Card C: Evolução do Ticket Médio */}
+            <div className={`glass ${styles.chartCard}`}>
+              <div className={styles.chartHeader}>
+                <h3 className={styles.chartTitle}>Evolução do ticket médio</h3>
+                {stats.comparisons.hasPrev && stats.comparisons.ticketChange !== null ? (
+                  <span className={stats.comparisons.ticketChange >= 0 ? styles.trendUpText : styles.trendDownText}>
+                    {stats.comparisons.ticketChange >= 0 ? '↑' : '↓'} Ticket médio {stats.comparisons.ticketChange >= 0 ? 'subiu' : 'caiu'} {Math.abs(stats.comparisons.ticketChange).toFixed(0)}% vs anterior
+                  </span>
+                ) : (
+                  <span className={styles.chartLegend}>Ticket médio diário em R$</span>
+                )}
+              </div>
+              <div className={styles.svgContainer}>
+                <svg viewBox="0 0 500 230" width="100%" height="100%" className={styles.svgChart}>
+                  <defs>
+                    <linearGradient id="ticketGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.35"/>
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.0"/>
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Grid Lines */}
+                  <line x1="50" y1="40" x2="445" y2="40" stroke="var(--border-color)" strokeDasharray="3 3" />
+                  <line x1="50" y1="110" x2="445" y2="110" stroke="var(--border-color)" strokeDasharray="3 3" />
+                  <line x1="50" y1="180" x2="445" y2="180" stroke="var(--border-color)" />
+
+                  {/* Area fill */}
+                  {ticketChartPoints.areaPath && (
+                    <path d={ticketChartPoints.areaPath} fill="url(#ticketGrad)" />
+                  )}
+
+                  {/* Trend line */}
+                  {ticketChartPoints.linePath && (
+                    <path 
+                      d={ticketChartPoints.linePath} 
+                      fill="none" 
+                      stroke="var(--primary)" 
+                      strokeWidth="3.5" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                    />
+                  )}
+
+                  {/* Dots & Labels */}
+                  {ticketChartPoints.points.map((p, idx) => {
+                    const amount = stats.ticketChartData[idx].amount;
+                    const len = stats.ticketChartData.length;
+                    const isPeak = amount === Math.max(...stats.ticketChartData.map(d => d.amount));
+                    const showValue = len <= 7 ? amount > 0 : (isPeak && amount > 0);
+                    return (
+                      <g key={idx}>
+                        <circle 
+                          cx={p.x} 
+                          cy={p.y} 
+                          r={len <= 7 ? "5" : "3.5"} 
+                          fill="var(--bg-card)" 
+                          stroke="var(--primary)" 
+                          strokeWidth={len <= 7 ? "3" : "2"} 
+                        />
+                        {showValue && (
+                          <text 
+                            x={p.x} 
+                            y={p.y - 12} 
+                            textAnchor="middle" 
+                            fontSize="9.5" 
+                            fill="var(--text-main)" 
+                            fontWeight="600"
+                          >
+                            {formatChartValue(amount)}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })}
+
+                  {/* X Axis Labels */}
+                  {stats.ticketChartData.map((d, idx) => {
+                    const len = stats.ticketChartData.length;
+                    const showLabel = len <= 7 || idx === 0 || idx === len - 1 || idx % Math.ceil(len / 6) === 0;
+                    if (!showLabel) return null;
+                    return (
+                      <text 
+                        key={idx} 
+                        x={50 + (idx * (395 / (len - 1)))} 
+                        y="208" 
+                        textAnchor="middle" 
+                        fontSize="10" 
+                        fill="var(--text-muted)"
+                        fontWeight="500"
+                      >
+                        {d.displayDate}
+                      </text>
+                    );
+                  })}
+                </svg>
+              </div>
             </div>
           </div>
 
@@ -691,6 +1007,7 @@ export default function RelatoriosPage() {
                       <th style={{ textAlign: 'center' }}>Compras</th>
                       <th style={{ textAlign: 'right' }}>Ticket Médio</th>
                       <th style={{ textAlign: 'right' }}>Total Comprado</th>
+                      <th style={{ width: '80px', textAlign: 'center' }}>Tendência</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -711,12 +1028,21 @@ export default function RelatoriosPage() {
                           <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>
                             {c.totalSpent.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {c.trend === 'up' ? (
+                              <span style={{ color: 'var(--success)', fontWeight: 'bold', fontSize: '1.1rem' }}>↑</span>
+                            ) : c.trend === 'down' ? (
+                              <span style={{ color: 'var(--danger)', fontWeight: 'bold', fontSize: '1.1rem' }}>↓</span>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', fontWeight: 'bold' }}>-</span>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
                     {stats.topClients.length === 0 && (
                       <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>
+                        <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>
                           Nenhum cliente com compras registradas
                         </td>
                       </tr>

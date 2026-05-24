@@ -363,9 +363,9 @@
 }
 
 /* Custom Grids for Layout Expansion */
-.distributionGrid {
+.threeCardsGrid {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.25rem;
   margin-top: 0.25rem;
 }
@@ -377,84 +377,84 @@
   margin-top: 0.25rem;
 }
 
-/* Category split bar layout */
-.splitProgressContainer {
+/* Resumo Matinal Card */
+.morningSummaryCard {
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(29, 158, 117, 0.08) 0%, rgba(29, 158, 117, 0.02) 100%);
+  border: 1px solid rgba(29, 158, 117, 0.2);
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  margin: 1.5rem 0;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
   width: 100%;
+  box-sizing: border-box;
 }
 
-.splitProgressBar {
-  display: flex;
-  height: 24px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border-color);
-  width: 100%;
-}
-
-.splitBarFrutas {
-  background: linear-gradient(90deg, #10B981, #059669);
-  height: 100%;
-  transition: width var(--transition-normal);
-}
-
-.splitBarLegumes {
-  background: linear-gradient(90deg, #E8832A, #C25E12);
-  height: 100%;
-  transition: width var(--transition-normal);
-}
-
-.splitStats {
-  display: flex;
-  justify-content: space-around;
-  gap: 1rem;
-  margin-top: 0.5rem;
-}
-
-.splitStatItem {
+.morningSummaryHeader {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.5rem;
 }
 
-.splitColorDot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.splitColorDotFrutas {
-  background: var(--success);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
-}
-
-.splitColorDotLegumes {
-  background: var(--secondary);
-  box-shadow: 0 0 10px rgba(232, 131, 42, 0.3);
-}
-
-.splitStatText {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-}
-
-.splitStatLabel {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.splitStatVal {
-  font-size: 1.15rem;
-  font-weight: 700;
+.morningSummaryTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
   color: var(--text-main);
-  font-family: var(--font-poppins);
+  margin: 0;
+}
+
+.morningSummaryText {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* KPI Comparison Trends */
+.kpiComparison {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 0.35rem;
+}
+
+.trendUp {
+  color: var(--success);
+}
+
+.trendDown {
+  color: var(--danger);
+}
+
+.trendUpText {
+  font-size: 0.75rem;
+  color: var(--success);
+  font-weight: 600;
+}
+
+.trendDownText {
+  font-size: 0.75rem;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* Payment Warning Alert */
+.paymentWarning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: #ef4444;
+  font-weight: 500;
+  margin-top: 0.75rem;
+  line-height: 1.3;
 }
 
 /* Payment breakdown progress bars */
@@ -554,7 +554,7 @@
 }
 
 @media (max-width: 1024px) {
-  .distributionGrid,
+  .threeCardsGrid,
   .rankingsGrid {
     grid-template-columns: 1fr;
   }
