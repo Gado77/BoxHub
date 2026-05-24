@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, isMockMode, CRM_BRANDING } from '@/lib/supabase';
-import { Sprout, Lock, AlertCircle, Check, Key } from 'lucide-react';
+import { Sprout, Lock, AlertCircle, Check, Key, Eye, EyeOff } from 'lucide-react';
 import styles from './welcome.module.css';
 
 export default function WelcomePage() {
@@ -16,47 +16,79 @@ export default function WelcomePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // Password visibility states
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   useEffect(() => {
-    const checkInviteSession = async () => {
+    let active = true;
+    let unsubscribeFn: (() => void) | undefined;
+    let timer: NodeJS.Timeout | undefined;
+
+    const loadUserProfile = async (userId: string) => {
       try {
-        if (isMockMode) {
-          setError('O modo de demonstração local está ativo. Para testar convites reais por e-mail, configure as credenciais do Supabase no .env.local.');
-          setSessionLoading(false);
-          return;
-        }
-
-        // Wait a small moment to let Supabase SDK process hash parameters from the URL
-        await new Promise((r) => setTimeout(r, 800));
-
-        const { data: { session } } = await supabase!.auth.getSession();
-
-        if (!session) {
-          setError('Link de convite inválido, expirado ou você já o utilizou. Por favor, solicite um novo convite ao administrador do Box.');
-          setSessionLoading(false);
-          return;
-        }
-
-        // Get profiles and organization details
         const { data: userProfile, error: profileErr } = await supabase!
           .from('profiles')
           .select('*, organizations(*)')
-          .eq('id', session.user.id)
+          .eq('id', userId)
           .single();
+
+        if (!active) return;
 
         if (profileErr || !userProfile) {
           setError('Não encontramos as informações da sua conta. Fale com seu administrador.');
         } else {
           setProfile(userProfile);
         }
-      } catch (err: any) {
-        console.error('Error verifying invite:', err);
-        setError('Ocorreu um erro ao verificar o convite.');
+      } catch (err) {
+        console.error('Error loading user profile:', err);
+        if (active) setError('Erro ao carregar as informações do seu perfil.');
       } finally {
-        setSessionLoading(false);
+        if (active) setSessionLoading(false);
       }
     };
 
-    checkInviteSession();
+    const run = async () => {
+      if (isMockMode) {
+        setError('O modo de demonstração local está ativo. Para testar convites reais por e-mail, configure as credenciais do Supabase no .env.local.');
+        setSessionLoading(false);
+        return;
+      }
+
+      // Check current session
+      const { data: { session: currentSession } } = await supabase!.auth.getSession();
+      if (currentSession) {
+        if (active) await loadUserProfile(currentSession.user.id);
+        return;
+      }
+
+      // Set up onAuthStateChange listener
+      const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
+        if (session && active) {
+          await loadUserProfile(session.user.id);
+          if (unsubscribeFn) unsubscribeFn();
+        }
+      });
+      
+      unsubscribeFn = () => subscription.unsubscribe();
+
+      // Fallback timeout in case the hash is invalid/expired/missing
+      timer = setTimeout(() => {
+        if (active) {
+          setError('Link de convite inválido, expirado ou você já o utilizou. Por favor, solicite um novo convite ao administrador do Box.');
+          setSessionLoading(false);
+          if (unsubscribeFn) unsubscribeFn();
+        }
+      }, 5000);
+    };
+
+    run();
+
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+      if (unsubscribeFn) unsubscribeFn();
+    };
   }, []);
 
   const handleSetPassword = async (e: React.FormEvent) => {
@@ -126,11 +158,18 @@ export default function WelcomePage() {
                 </div>
               </>
             ) : (
-              <img
-                src={CRM_BRANDING.logoLight}
-                alt="BoxHub"
-                style={{ maxWidth: '180px', maxHeight: '48px', objectFit: 'contain' }}
-              />
+              <>
+                <img
+                  src={CRM_BRANDING.logoLight}
+                  alt="BoxHub"
+                  className={styles.logoLightOnly}
+                />
+                <img
+                  src={CRM_BRANDING.logoDark}
+                  alt="BoxHub"
+                  className={styles.logoDarkOnly}
+                />
+              </>
             )}
           </div>
           <h2 className={styles.title}>Definir Senha de Acesso</h2>
@@ -162,14 +201,22 @@ export default function WelcomePage() {
               <div className="input-wrapper" style={{ position: 'relative' }}>
                 <Lock size={16} className="input-icon" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input 
-                  type="password" 
+                  type={showPassword ? 'text' : 'password'} 
                   className="form-control" 
-                  style={{ paddingLeft: '2.5rem' }}
+                  style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                   placeholder="Mínimo 6 caracteres"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  className={styles.passwordToggle}
+                  onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
@@ -178,14 +225,22 @@ export default function WelcomePage() {
               <div className="input-wrapper" style={{ position: 'relative' }}>
                 <Key size={16} className="input-icon" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input 
-                  type="password" 
+                  type={showConfirmPassword ? 'text' : 'password'} 
                   className="form-control" 
-                  style={{ paddingLeft: '2.5rem' }}
+                  style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                   placeholder="Repita a senha"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  className={styles.passwordToggle}
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  title={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 

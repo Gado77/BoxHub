@@ -59,6 +59,7 @@ export default function ConfiguracoesPage() {
   const [editMemberName, setEditMemberName] = useState('');
   const [memberPassword, setMemberPassword] = useState('');
   const [editMemberRole, setEditMemberRole] = useState<'admin' | 'vendedor'>('vendedor');
+  const [invitedViaEmail, setInvitedViaEmail] = useState(false);
 
   // Modal actions status
   const [modalLoading, setModalLoading] = useState(false);
@@ -241,9 +242,10 @@ export default function ConfiguracoesPage() {
         if (!res.ok) {
           throw new Error(data.error || 'Erro ao adicionar membro.');
         }
+        setInvitedViaEmail(data.invitedViaEmail || false);
         setMemberPassword(data.defaultPassword || '');
         await loadConfigData();
-        return; // keeps modal open to show password
+        return; // keeps modal open to show password/invite details
       }
 
       // Reset and close (mock mode only)
@@ -251,6 +253,7 @@ export default function ConfiguracoesPage() {
       setNewMemberEmail('');
       setNewMemberRole('vendedor');
       setMemberPassword('');
+      setInvitedViaEmail(false);
       setIsAddModalOpen(false);
     } catch (err: any) {
       console.error('Error adding member:', err);
@@ -770,6 +773,7 @@ export default function ConfiguracoesPage() {
                 <button 
                   onClick={() => {
                     setMemberPassword('');
+                    setInvitedViaEmail(false);
                     setModalError('');
                     setIsAddModalOpen(true);
                   }}
@@ -878,54 +882,62 @@ export default function ConfiguracoesPage() {
 
       {/* ================= MODALS ================= */}
 
-      {/* Modal: ADD MEMBER */}
       {isAddModalOpen && (
         <div className={styles.modalOverlay}>
           <div className={`${styles.modalContent} glass`}>
             <div className={styles.modalHeader}>
               <h3 className={styles.modalTitle}>Adicionar Membro na Equipe</h3>
-              <button className={styles.modalCloseBtn} onClick={() => setIsAddModalOpen(false)}>
+              <button className={styles.modalCloseBtn} onClick={() => { setIsAddModalOpen(false); setInvitedViaEmail(false); }}>
                 <X size={18} />
               </button>
             </div>
 
-            {memberPassword ? (
+            {invitedViaEmail || memberPassword ? (
               <div style={{ padding: '0.5rem 0' }}>
                 <div className={`${styles.alert} ${styles.alertSuccess}`} style={{ marginBottom: '1rem' }}>
                   <Check size={16} />
-                  <span>Membro adicionado com sucesso!</span>
+                  <span>{invitedViaEmail ? 'Convite enviado com sucesso!' : 'Membro adicionado com sucesso!'}</span>
                 </div>
 
-                <p style={{ marginBottom: '0.5rem', color: 'var(--text-main)' }}>
-                  Compartilhe as credenciais abaixo com <strong>{newMemberName}</strong>:
-                </p>
+                {invitedViaEmail ? (
+                  <p style={{ marginBottom: '1.5rem', color: 'var(--text-main)', lineHeight: '1.6' }}>
+                    Um e-mail de convite foi enviado para <strong>{newMemberEmail}</strong>. 
+                    O novo membro receberá as instruções para definir sua senha de acesso e ativar a conta.
+                  </p>
+                ) : (
+                  <>
+                    <p style={{ marginBottom: '0.5rem', color: 'var(--text-main)' }}>
+                      Compartilhe as credenciais abaixo com <strong>{newMemberName}</strong>:
+                    </p>
 
-                <div style={{ 
-                  background: 'var(--bg-main)', 
-                  border: '1px solid var(--border-color)', 
-                  borderRadius: 'var(--radius-md)', 
-                  padding: '1rem',
-                  marginBottom: '1rem'
-                }}>
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>E-mail</span>
-                    <div style={{ fontWeight: 600, color: 'var(--text-main)', wordBreak: 'break-all' }}>{newMemberEmail}</div>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Senha padrão</span>
                     <div style={{ 
-                      fontWeight: 700, 
-                      color: 'var(--primary)', 
-                      fontSize: '1.1rem', 
-                      fontFamily: 'monospace',
-                      letterSpacing: '1px'
-                    }}>{memberPassword}</div>
-                  </div>
-                </div>
+                      background: 'var(--bg-main)', 
+                      border: '1px solid var(--border-color)', 
+                      borderRadius: 'var(--radius-md)', 
+                      padding: '1rem',
+                      marginBottom: '1rem'
+                    }}>
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>E-mail</span>
+                        <div style={{ fontWeight: 600, color: 'var(--text-main)', wordBreak: 'break-all' }}>{newMemberEmail}</div>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Senha padrão</span>
+                        <div style={{ 
+                          fontWeight: 700, 
+                          color: 'var(--primary)', 
+                          fontSize: '1.1rem', 
+                          fontFamily: 'monospace',
+                          letterSpacing: '1px'
+                        }}>{memberPassword}</div>
+                      </div>
+                    </div>
 
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                  O membro pode alterar a senha depois de acessar o painel.
-                </p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                      O membro pode alterar a senha depois de acessar o painel.
+                    </p>
+                  </>
+                )}
 
                 <div className={styles.modalFooter}>
                   <button type="button" className="btn-primary" onClick={() => {
@@ -933,6 +945,7 @@ export default function ConfiguracoesPage() {
                     setNewMemberEmail('');
                     setNewMemberRole('vendedor');
                     setMemberPassword('');
+                    setInvitedViaEmail(false);
                     setIsAddModalOpen(false);
                   }}>
                     Ok, entendi

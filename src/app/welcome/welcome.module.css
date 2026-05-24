@@ -133,3 +133,46 @@
     opacity: 0.85;
   }
 }
+
+.logoLightOnly {
+  max-width: 180px;
+  max-height: 48px;
+  object-fit: contain;
+  display: block;
+}
+
+.logoDarkOnly {
+  max-width: 180px;
+  max-height: 48px;
+  object-fit: contain;
+  display: none;
+}
+
+:global([data-theme="dark"]) .logoLightOnly {
+  display: none;
+}
+
+:global([data-theme="dark"]) .logoDarkOnly {
+  display: block;
+}
+
+.passwordToggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-normal);
+  outline: none;
+}
+
+.passwordToggle:hover {
+  color: var(--primary);
+}

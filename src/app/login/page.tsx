@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, isMockMode, mockDb, mockStore } from '@/lib/supabase';
-import { Sprout, Lock, Mail, User, Building, AlertCircle } from 'lucide-react';
+import { supabase, isMockMode, mockDb, mockStore, CRM_BRANDING } from '@/lib/supabase';
+import { Sprout, Lock, Mail, User, Building, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import styles from './login.module.css';
 
 export default function LoginPage() {
@@ -19,6 +19,10 @@ export default function LoginPage() {
   // Loading & error states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Password visibility states
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
 
   // Check if already logged in (redirect to dashboard)
   useEffect(() => {
@@ -170,10 +174,11 @@ export default function LoginPage() {
       <div className={`${styles.container} glass animate-fade-in`}>
         <div className={styles.header}>
           <div className={styles.logoContainer}>
-            <Sprout className={styles.logoIcon} size={40} />
-            <h1 className={styles.logoText}>
-              Box<span className={styles.logoHighlight}>Hub</span>
-            </h1>
+            <img 
+              src={CRM_BRANDING.logoDark} 
+              alt="BoxHub Logo" 
+              className={styles.logoImage} 
+            />
           </div>
           <p className={styles.tagline}>Gestão que colhe resultados.</p>
         </div>
@@ -182,14 +187,14 @@ export default function LoginPage() {
           <button 
             type="button"
             className={`${styles.tab} ${activeTab === 'login' ? styles.activeTab : ''}`}
-            onClick={() => { setActiveTab('login'); setError(null); }}
+            onClick={() => { setActiveTab('login'); setError(null); setShowPassword(false); setShowRegPassword(false); }}
           >
             Entrar
           </button>
           <button 
             type="button"
             className={`${styles.tab} ${activeTab === 'register' ? styles.activeTab : ''}`}
-            onClick={() => { setActiveTab('register'); setError(null); }}
+            onClick={() => { setActiveTab('register'); setError(null); setShowPassword(false); setShowRegPassword(false); }}
           >
             Cadastrar Box
           </button>
@@ -227,14 +232,22 @@ export default function LoginPage() {
                 <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input 
                   id="password"
-                  type="password" 
+                  type={showPassword ? 'text' : 'password'} 
                   className="form-control" 
                   placeholder="••••••••"
-                  style={{ paddingLeft: '40px' }}
+                  style={{ paddingLeft: '40px', paddingRight: '40px' }}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  className={styles.passwordToggle}
+                  onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 
@@ -301,15 +314,23 @@ export default function LoginPage() {
                 <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input 
                   id="reg-password"
-                  type="password" 
+                  type={showRegPassword ? 'text' : 'password'} 
                   className="form-control" 
                   placeholder="Mínimo 6 caracteres"
-                  style={{ paddingLeft: '40px' }}
+                  style={{ paddingLeft: '40px', paddingRight: '40px' }}
                   required
                   minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  className={styles.passwordToggle}
+                  onClick={() => setShowRegPassword(!showRegPassword)}
+                  title={showRegPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showRegPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 

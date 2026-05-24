@@ -24,12 +24,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Dados incompletos para criação de membro.' }, { status: 400 });
     }
 
-    // Create user with default password
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password: DEFAULT_PASSWORD,
-      email_confirm: true,
-      user_metadata: {
+    const requestUrl = new URL(request.url);
+    const origin = requestUrl.origin;
+
+    // Create user by inviting them via email
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${origin}/welcome`,
+      data: {
         full_name: name
       }
     });
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     }
 
     if (!authData?.user) {
-      return NextResponse.json({ error: 'Falha ao criar usuário.' }, { status: 400 });
+      return NextResponse.json({ error: 'Falha ao criar convite.' }, { status: 400 });
     }
 
     // Insert user into profiles
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       success: true,
-      defaultPassword: DEFAULT_PASSWORD,
+      invitedViaEmail: true,
       member: {
         id: authData.user.id,
         organization_id,

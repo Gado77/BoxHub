@@ -126,3 +126,32 @@
   justify-content: center;
   gap: 0.5rem;
 }
+
+.logoImage {
+  max-width: 220px;
+  max-height: 52px;
+  object-fit: contain;
+  margin: 0.5rem auto;
+  display: block;
+}
+
+.passwordToggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast);
+  outline: none;
+}
+
+.passwordToggle:hover {
+  color: var(--primary);
+}
