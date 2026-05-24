@@ -5,24 +5,11 @@
   max-width: 100%;
 }
 
-@media (min-width: 901px) {
-  .container {
-    height: calc(100vh - 150px);
-    overflow: hidden;
-  }
-}
-
 .topRow {
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: 1.25rem;
   align-items: stretch;
-}
-
-@media (min-width: 901px) {
-  .topRow {
-    height: 100%;
-  }
 }
 
 /* Left Column: Product List */
@@ -108,6 +95,12 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 0.25rem;
+}
+
+@media (min-width: 901px) {
+  .productList {
+    max-height: calc(100vh - 300px);
+  }
 }
 
 .productList::-webkit-scrollbar {
@@ -221,6 +214,12 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 0.5rem;
+}
+
+@media (min-width: 901px) {
+  .detailCard {
+    max-height: calc(100vh - 200px);
+  }
 }
 
 .detailCard::-webkit-scrollbar {
