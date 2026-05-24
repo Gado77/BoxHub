@@ -329,3 +329,106 @@
     justify-content: center;
   }
 }
+
+/* Autocomplete searchable client dropdown */
+.searchContainer {
+  position: relative;
+  flex: 1;
+}
+
+.searchIconRight {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.clearSearchBtn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border-radius: 50%;
+  transition: all var(--transition-fast);
+}
+
+.clearSearchBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--danger);
+}
+
+.autocompleteDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  padding: 0.25rem;
+  animation: fadeIn var(--transition-fast) forwards;
+}
+
+.autocompleteOption {
+  padding: 0.65rem 0.85rem;
+  cursor: pointer;
+  color: var(--text-main);
+  border-radius: var(--radius-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  transition: all var(--transition-fast);
+}
+
+.autocompleteOption:hover {
+  background: rgba(29, 158, 117, 0.12);
+  color: var(--primary);
+}
+
+.optionActive {
+  background: var(--primary-glow);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.optionEmpty {
+  padding: 0.75rem 1rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.optionDirectSale {
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0.25rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

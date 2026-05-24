@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase, isMockMode, mockDb } from '@/lib/supabase';
-import { X, Plus, Trash2, CheckCircle2, UserPlus, ShoppingBag, Coins, CreditCard, AlertTriangle } from 'lucide-react';
+import { X, Plus, Trash2, CheckCircle2, UserPlus, ShoppingBag, Coins, CreditCard, AlertTriangle, Search } from 'lucide-react';
 import styles from './NewSaleModal.module.css';
 
 interface NewSaleModalProps {
@@ -30,6 +30,10 @@ export default function NewSaleModal({ onClose, onSaleCreated }: NewSaleModalPro
   // Selection States
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'pix' | 'fiado'>('pix');
+
+  // Autocomplete Search States
+  const [clientSearchTerm, setClientSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   // Quick Client Creation State
   const [showQuickClient, setShowQuickClient] = useState(false);
@@ -51,6 +55,18 @@ export default function NewSaleModal({ onClose, onSaleCreated }: NewSaleModalPro
 
   // Client Fiado Status
   const [clientFiadoBalance, setClientFiadoBalance] = useState(0);
+
+  // Sync search input when client selection changes (e.g. via direct click or Quick Client onboarding)
+  useEffect(() => {
+    if (selectedClientId) {
+      const client = clients.find(c => c.id === selectedClientId);
+      if (client) {
+        setClientSearchTerm(client.name);
+      }
+    } else {
+      setClientSearchTerm('');
+    }
+  }, [selectedClientId, clients]);
 
   // Load clients and products on mount
   useEffect(() => {
@@ -344,19 +360,83 @@ export default function NewSaleModal({ onClose, onSaleCreated }: NewSaleModalPro
           <div className={styles.clientSection}>
             <label className="form-label">Cliente</label>
             <div className={styles.clientSelectorRow}>
-              <select 
-                className="form-control"
-                value={selectedClientId}
-                onChange={(e) => setSelectedClientId(e.target.value)}
-                style={{ flex: 1 }}
-              >
-                <option value="">-- Venda Direta (Sem Cliente Identificado) --</option>
-                {clients.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.type.toUpperCase()})
-                  </option>
-                ))}
-              </select>
+              <div className={styles.searchContainer}>
+                <input 
+                  type="text"
+                  className="form-control"
+                  placeholder="Buscar cliente pelo nome..."
+                  value={clientSearchTerm}
+                  onChange={(e) => {
+                    setClientSearchTerm(e.target.value);
+                    setIsDropdownOpen(true);
+                    if (e.target.value === '') {
+                      setSelectedClientId('');
+                    }
+                  }}
+                  onFocus={() => setIsDropdownOpen(true)}
+                  onBlur={() => {
+                    setTimeout(() => {
+                      setIsDropdownOpen(false);
+                      const originalClient = clients.find(c => c.id === selectedClientId);
+                      setClientSearchTerm(originalClient ? originalClient.name : '');
+                    }, 200);
+                  }}
+                  style={{ paddingRight: '40px' }}
+                />
+                
+                {clientSearchTerm ? (
+                  <button 
+                    type="button"
+                    className={styles.clearSearchBtn}
+                    onClick={() => {
+                      setSelectedClientId('');
+                      setClientSearchTerm('');
+                    }}
+                    title="Limpar seleção"
+                  >
+                    <X size={16} />
+                  </button>
+                ) : (
+                  <Search size={16} className={styles.searchIconRight} />
+                )}
+
+                {isDropdownOpen && (
+                  <div className={styles.autocompleteDropdown}>
+                    <div 
+                      className={`${styles.autocompleteOption} ${styles.optionDirectSale} ${!selectedClientId ? styles.optionActive : ''}`}
+                      onMouseDown={() => {
+                        setSelectedClientId('');
+                        setClientSearchTerm('');
+                        setIsDropdownOpen(false);
+                      }}
+                    >
+                      -- Venda Direta (Sem Cliente Identificado) --
+                    </div>
+                    {(() => {
+                      const filtered = clients.filter(c => 
+                        c.name.toLowerCase().includes(clientSearchTerm.toLowerCase())
+                      );
+                      if (filtered.length === 0) {
+                        return <div className={styles.optionEmpty}>Nenhum cliente encontrado</div>;
+                      }
+                      return filtered.map(c => (
+                        <div 
+                          key={c.id}
+                          className={`${styles.autocompleteOption} ${selectedClientId === c.id ? styles.optionActive : ''}`}
+                          onMouseDown={() => {
+                            setSelectedClientId(c.id);
+                            setClientSearchTerm(c.name);
+                            setIsDropdownOpen(false);
+                          }}
+                        >
+                          <span>{c.name}</span>
+                          <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>{c.type.toUpperCase()}</span>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                )}
+              </div>
               <button 
                 type="button" 
                 className={styles.quickAddBtn}
