@@ -5,6 +5,13 @@
   max-width: 100%;
 }
 
+@media (min-width: 901px) {
+  .container {
+    height: calc(100vh - 150px);
+    overflow: hidden;
+  }
+}
+
 .topRow {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -14,7 +21,7 @@
 
 @media (min-width: 901px) {
   .topRow {
-    height: calc(100vh - 140px);
+    height: 100%;
   }
 }
 
