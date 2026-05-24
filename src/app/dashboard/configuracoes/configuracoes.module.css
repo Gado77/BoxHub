@@ -570,10 +570,6 @@
   left: 50%;
   max-width: none;
   max-height: none;
-  min-width: 100%;
-  min-height: 100%;
-  width: auto;
-  height: auto;
   transform-origin: center center;
   pointer-events: none; /* Let pointer events bubble up to the viewport */
   user-select: none;

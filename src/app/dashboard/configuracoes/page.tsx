@@ -68,6 +68,7 @@ export default function ConfiguracoesPage() {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imgRatio, setImgRatio] = useState(1);
 
   // Modal actions status
   const [modalLoading, setModalLoading] = useState(false);
@@ -390,6 +391,26 @@ export default function ConfiguracoesPage() {
   };
 
   // Dragging event handlers for the cropper using PointerEvents (responsive mouse + touch)
+  const getConstrainedPosition = (x: number, y: number, currentZoom: number, ratio: number) => {
+    const w = (ratio > 1 ? 250 * ratio : 250) * currentZoom;
+    const h = (ratio > 1 ? 250 : 250 / ratio) * currentZoom;
+
+    const minX = 125 - w / 2;
+    const maxX = w / 2 - 125;
+    const minY = 125 - h / 2;
+    const maxY = h / 2 - 125;
+
+    const clampedX = minX > maxX ? 0 : Math.min(Math.max(x, minX), maxX);
+    const clampedY = minY > maxY ? 0 : Math.min(Math.max(y, minY), maxY);
+
+    return { x: clampedX, y: clampedY };
+  };
+
+  const handleZoomChange = (newZoom: number) => {
+    setZoom(newZoom);
+    setPosition((prev) => getConstrainedPosition(prev.x, prev.y, newZoom, imgRatio));
+  };
+
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
     setDragStart({
@@ -401,10 +422,10 @@ export default function ConfiguracoesPage() {
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
-    setPosition({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y
-    });
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
+    const constrained = getConstrainedPosition(newX, newY, zoom, imgRatio);
+    setPosition(constrained);
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
@@ -505,6 +526,7 @@ export default function ConfiguracoesPage() {
       setCropImageUrl(reader.result as string);
       setPosition({ x: 0, y: 0 });
       setZoom(1);
+      setImgRatio(1);
       setIsCropModalOpen(true);
     };
     reader.readAsDataURL(file);
@@ -1262,7 +1284,13 @@ export default function ConfiguracoesPage() {
                   src={cropImageUrl} 
                   alt="Recorte" 
                   className={styles.cropImage}
+                  onLoad={(e) => {
+                    const img = e.currentTarget;
+                    setImgRatio(img.naturalWidth / img.naturalHeight);
+                  }}
                   style={{
+                    width: imgRatio > 1 ? 'auto' : '100%',
+                    height: imgRatio > 1 ? '100%' : 'auto',
                     transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px) scale(${zoom})`,
                   }}
                   draggable={false}
@@ -1280,7 +1308,7 @@ export default function ConfiguracoesPage() {
                     max="3" 
                     step="0.01" 
                     value={zoom}
-                    onChange={(e) => setZoom(parseFloat(e.target.value))}
+                    onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
                     className={styles.zoomSlider}
                   />
                 </div>
