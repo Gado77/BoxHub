@@ -321,3 +321,242 @@
     height: 180px;
   }
 }
+
+/* Time range selector */
+.rangeSelector {
+  display: flex;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  padding: 0.25rem;
+  border-radius: 8px;
+  gap: 0.25rem;
+  width: fit-content;
+  align-self: flex-end;
+}
+
+.rangeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.rangeButton:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.rangeButtonActive {
+  color: var(--primary) !important;
+  background: var(--bg-card-hover) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-sm);
+  font-weight: 600;
+}
+
+/* Custom Grids for Layout Expansion */
+.distributionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 1.25rem;
+  margin-top: 0.25rem;
+}
+
+.rankingsGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1.25rem;
+  margin-top: 0.25rem;
+}
+
+/* Category split bar layout */
+.splitProgressContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 1.5rem 0;
+  width: 100%;
+}
+
+.splitProgressBar {
+  display: flex;
+  height: 24px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  width: 100%;
+}
+
+.splitBarFrutas {
+  background: linear-gradient(90deg, #10B981, #059669);
+  height: 100%;
+  transition: width var(--transition-normal);
+}
+
+.splitBarLegumes {
+  background: linear-gradient(90deg, #E8832A, #C25E12);
+  height: 100%;
+  transition: width var(--transition-normal);
+}
+
+.splitStats {
+  display: flex;
+  justify-content: space-around;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.splitStatItem {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.splitColorDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.splitColorDotFrutas {
+  background: var(--success);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.splitColorDotLegumes {
+  background: var(--secondary);
+  box-shadow: 0 0 10px rgba(232, 131, 42, 0.3);
+}
+
+.splitStatText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.splitStatLabel {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.splitStatVal {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+  font-family: var(--font-poppins);
+}
+
+/* Payment breakdown progress bars */
+.paymentBreakdownList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  width: 100%;
+}
+
+.paymentBreakdownItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.paymentBreakdownHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.paymentMethodName {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.paymentMethodVal {
+  color: var(--text-main);
+  font-weight: 700;
+  font-family: var(--font-poppins);
+}
+
+.paymentMethodPercent {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.75rem;
+  margin-left: 0.35rem;
+}
+
+.paymentProgressBar {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  width: 100%;
+}
+
+.paymentProgressFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width var(--transition-normal);
+}
+
+.fillPix {
+  background: var(--success);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+.fillDinheiro {
+  background: var(--warning);
+  box-shadow: 0 0 8px rgba(245, 166, 35, 0.3);
+}
+
+.fillFiado {
+  background: var(--danger);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
+/* Seller Avatar */
+.sellerAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary-glow);
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--primary);
+  overflow: hidden;
+  margin: 0 auto;
+}
+
+.sellerAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 1024px) {
+  .distributionGrid,
+  .rankingsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
