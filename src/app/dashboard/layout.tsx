@@ -19,7 +19,8 @@ import {
   ShoppingBag,
   Menu,
   X,
-  TrendingUp
+  TrendingUp,
+  Coins
 } from 'lucide-react';
 import styles from './dashboard.module.css';
 
@@ -159,6 +160,7 @@ export default function DashboardLayout({
 
   const getPageTitle = () => {
     if (pathname.includes('/clientes')) return 'Clientes';
+    if (pathname.includes('/fiado')) return 'Gestão de Fiado';
     if (pathname.includes('/vendas')) return 'Histórico de Vendas';
     if (pathname.includes('/produtos')) return 'Produtos';
     if (pathname.includes('/relatorios')) return 'Relatórios';
@@ -230,6 +232,14 @@ export default function DashboardLayout({
             >
               <Users size={20} />
               {!isCollapsed && <span>Clientes</span>}
+            </Link>
+            <Link 
+              href="/dashboard/fiado" 
+              className={`${styles.navLink} ${isActive('/dashboard/fiado') ? styles.navLinkActive : ''}`}
+              title="Fiado"
+            >
+              <Coins size={20} />
+              {!isCollapsed && <span>Fiado</span>}
             </Link>
             <Link 
               href="/dashboard/produtos" 
@@ -469,6 +479,16 @@ export default function DashboardLayout({
                     <Users size={24} />
                   </div>
                   <span className={styles.menuGridItemLabel}>Clientes</span>
+                </Link>
+                <Link 
+                  href="/dashboard/fiado" 
+                  className={`${styles.menuSheetGridItem} ${isActive('/dashboard/fiado') ? styles.menuGridActive : ''}`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <div className={styles.menuIconWrapper} style={{ backgroundColor: 'rgba(234, 179, 8, 0.15)', color: '#eab308' }}>
+                    <Coins size={24} />
+                  </div>
+                  <span className={styles.menuGridItemLabel}>Fiado</span>
                 </Link>
                 <Link 
                   href="/dashboard/produtos" 
