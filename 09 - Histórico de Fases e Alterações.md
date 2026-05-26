@@ -35,6 +35,7 @@ Este documento registra cronologicamente todas as **28 fases de desenvolvimento*
 - [Fase 28 — Central de SuperAdmin (Monitoramento Global do Sistema)](#fase-28-central-de-superadmin-monitoramento-global-do-sistema)
 - [Fase 29 — Preparação de Produção, Formatação pt-BR e Onboarding Pós-Cadastro](#fase-29-preparacao-de-producao-formatacao-pt-br-e-onboarding-pos-cadastro)
 - [Fase 30 — Plano de Remediação de Produção - Fase 1: Segurança Completa](#fase-30-plano-de-remediacao-de-producao-fase-1-seguranca-completa)
+- [Fase 31 — Plano de Remediação de Produção - Fase 2: Modularização da Arquitetura](#fase-31-plano-de-remediacao-de-producao-fase-2-modularizacao-da-arquitetura)
 
 ---
 
@@ -176,4 +177,17 @@ Este documento registra cronologicamente todas as **28 fases de desenvolvimento*
     *   **Middleware de Proteção:** Criação de `middleware.ts` para proteger rotas `/dashboard/*` e bloquear APIs (`/api/*`) de requisições sem sessão válida, além de validar a role `superadmin` na borda.
     *   **Segurança Tenant em API e Checkout:** Modificados endpoints `/api/ai/insights` e `/api/team/add` para buscar perfil e organização diretamente da sessão JWT, prevenindo injeções e vazamentos. Correção na criação de sessão Stripe para enviar `subscription_data.metadata.orgId` permitindo que o webhook atualize as organizações.
     *   **Rate Limiting e Credenciais:** Utilitário in-memory `rate-limit.ts` adicionado com restrições por IP em rotas críticas (IA, checkout e convites). Remoção de senhas padrões e variáveis obsoletas.
+
+## Fase 31 — Plano de Remediação de Produção - Fase 2: Modularização da Arquitetura
+*   **Descrição:** Execução da Fase 2 (Arquitetura) para refatorar o arquivo monolítico de infraestrutura e criar hooks operacionais dedicados.
+*   **Implementação:**
+    *   **Modularização do supabase.ts:** O arquivo `supabase.ts` (de 970 linhas) foi fragmentado de forma limpa. Suas interfaces TypeScript foram extraídas para o novo módulo independente `src/lib/types.ts`. Os dados simulados e operações locais (`mockStore` e `mockDb`) foram migrados para `src/lib/mock.ts`.
+    *   **Arquitetura Retrocompatível:** O arquivo original `supabase.ts` foi mantido atuando como uma fachada ("facade"), apenas importando e re-exportando tudo o que foi migrado para `types.ts` e `mock.ts`. Isso evitou qualquer quebra de compilação ou necessidade de editar as importações das 15 páginas do app.
+    *   **Hooks Customizados de Negócio:** Desenvolvemos ganchos (React hooks) customizados, tipados e focados no tenant para encapsular lógica de estado de negócio do BoxHub:
+        *   `useAuth()`: Gerencia sessões, perfis de usuário logado e atualizações em tempo real.
+        *   `useOrg()`: Resolve o tenant/organização associado de forma dinâmica.
+        *   `useSales()`: Centraliza a listagem de vendas históricas por tenant com relacionamentos aninhados (`profiles`/`clients`).
+        *   `useClients()`: Sincroniza e gerencia a listagem e filtros operacionais de clientes do Box.
+    *   **Build de Produção Limpo:** O compilador Next.js gerou a build de produção sem nenhum erro de imports, tipos ou sintaxe.
+
 
