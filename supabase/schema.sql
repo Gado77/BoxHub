@@ -145,6 +145,17 @@ begin
 end;
 $$ language plpgsql;
 
+-- Helper function to check if the current user is a superadmin
+create or replace function public.is_superadmin()
+returns boolean security definer as $$
+begin
+    return exists (
+        select 1 from public.profiles 
+        where id = auth.uid() and role = 'superadmin'
+    );
+end;
+$$ language plpgsql;
+
 -- 1. Policies for profiles (Allow read/write to users in the same organization)
 create policy "Users can view profiles in their organization"
     on public.profiles for select
@@ -222,6 +233,27 @@ create policy "Users can manage ai insights"
     on public.ai_insights for all
     using (organization_id = public.current_user_org_id())
     with check (organization_id = public.current_user_org_id());
+
+-- 10. Policies for superadmins (bypass RLS for global views and admin actions)
+create policy "Superadmins can select all organizations"
+    on public.organizations for select
+    using (public.is_superadmin());
+
+create policy "Superadmins can update all organizations"
+    on public.organizations for update
+    using (public.is_superadmin());
+
+create policy "Superadmins can view all profiles"
+    on public.profiles for select
+    using (public.is_superadmin());
+
+create policy "Superadmins can view all sales"
+    on public.sales for select
+    using (public.is_superadmin());
+
+create policy "Superadmins can view all clients"
+    on public.clients for select
+    using (public.is_superadmin());
 
 
 -- =========================================================================
