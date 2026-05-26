@@ -44,7 +44,7 @@ interface Profile {
   id: string;
   organization_id: string;
   name: string;
-  role: 'admin' | 'vendedor';
+  role: 'admin' | 'vendedor' | 'superadmin';
   avatar_url?: string | null;
 }
 
@@ -135,6 +135,13 @@ const initialMockOrgs: Organization[] = [
     stripe_customer_id: 'cus_mock123',
     subscription_status: 'trial',
     settings: { estoque_ativo: true },
+  },
+  {
+    id: 'org-system-admin',
+    name: 'BoxHub Global',
+    stripe_customer_id: null,
+    subscription_status: 'active',
+    settings: { estoque_ativo: false },
   }
 ];
 
@@ -151,6 +158,13 @@ const initialMockProfiles: Profile[] = [
     organization_id: DEFAULT_ORG_ID,
     name: 'Carlos Vendedor',
     role: 'vendedor',
+    avatar_url: null,
+  },
+  {
+    id: 'usr-super-999',
+    organization_id: 'org-system-admin',
+    name: 'Dono do Sistema (SuperAdmin)',
+    role: 'superadmin',
     avatar_url: null,
   }
 ];

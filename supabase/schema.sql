@@ -23,7 +23,7 @@ create table public.profiles (
     id uuid primary key references auth.users on delete cascade,
     organization_id uuid not null references public.organizations(id) on delete cascade,
     name text not null,
-    role text not null default 'admin' check (role in ('admin', 'vendedor')),
+    role text not null default 'admin' check (role in ('admin', 'vendedor', 'superadmin')),
     avatar_url text,
     created_at timestamptz not null default now()
 );

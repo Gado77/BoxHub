@@ -21,7 +21,8 @@ import {
   X,
   TrendingUp,
   Coins,
-  UserCheck
+  UserCheck,
+  ShieldAlert
 } from 'lucide-react';
 import styles from './dashboard.module.css';
 
@@ -164,6 +165,7 @@ export default function DashboardLayout({
     if (pathname.includes('/fiado')) return 'Gestão de Fiado';
     if (pathname.includes('/vendas')) return 'Histórico de Vendas';
     if (pathname.includes('/vendedores')) return 'Vendedores';
+    if (pathname.includes('/superadmin')) return 'SuperAdmin';
     if (pathname.includes('/produtos')) return 'Produtos';
     if (pathname.includes('/relatorios')) return 'Relatórios';
     if (pathname.includes('/configuracoes')) return 'Configurações';
@@ -267,6 +269,16 @@ export default function DashboardLayout({
               >
                 <UserCheck size={20} />
                 {!isCollapsed && <span>Vendedores</span>}
+              </Link>
+            )}
+            {user?.role === 'superadmin' && (
+              <Link 
+                href="/dashboard/superadmin" 
+                className={`${styles.navLink} ${isActive('/dashboard/superadmin') ? styles.navLinkActive : ''}`}
+                title="SuperAdmin"
+              >
+                <ShieldAlert size={20} />
+                {!isCollapsed && <span>SuperAdmin</span>}
               </Link>
             )}
             <Link 
@@ -539,6 +551,18 @@ export default function DashboardLayout({
                       <UserCheck size={24} />
                     </div>
                     <span className={styles.menuGridItemLabel}>Vendedores</span>
+                  </Link>
+                )}
+                {user?.role === 'superadmin' && (
+                  <Link 
+                    href="/dashboard/superadmin" 
+                    className={`${styles.menuSheetGridItem} ${isActive('/dashboard/superadmin') ? styles.menuGridActive : ''}`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <div className={styles.menuIconWrapper} style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+                      <ShieldAlert size={24} />
+                    </div>
+                    <span className={styles.menuGridItemLabel}>SuperAdmin</span>
                   </Link>
                 )}
                 <Link 
