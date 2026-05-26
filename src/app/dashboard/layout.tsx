@@ -423,6 +423,13 @@ export default function DashboardLayout({
             <span>Clientes</span>
           </Link>
           <Link 
+            href="/dashboard/fiado" 
+            className={`${styles.mobileNavLink} ${isActive('/dashboard/fiado') ? styles.mobileNavLinkActive : ''}`}
+          >
+            <Coins size={20} />
+            <span>Fiado</span>
+          </Link>
+          <Link 
             href="/dashboard/produtos" 
             className={`${styles.mobileNavLink} ${isActive('/dashboard/produtos') ? styles.mobileNavLinkActive : ''}`}
           >
