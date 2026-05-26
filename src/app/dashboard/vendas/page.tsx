@@ -23,6 +23,7 @@ export default function VendasHistoryPage() {
   const [sales, setSales] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,12 +38,30 @@ export default function VendasHistoryPage() {
   const loadData = async () => {
     setLoadingData(true);
     try {
+      // Load current user profile first
+      let userProfile = null;
+      if (isMockMode) {
+        userProfile = mockDb.getCurrentUser();
+      } else {
+        const { data: { session } } = await supabase!.auth.getSession();
+        if (session) {
+          const { data: profile } = await supabase!
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          userProfile = profile;
+        }
+      }
+      setCurrentUser(userProfile);
+
+      let salesList: any[] = [];
+      let clientsList: any[] = [];
+
       if (isMockMode) {
         // Mock DB loading
-        const salesList = mockDb.sales.list();
-        const clientsList = mockDb.clients.list();
-        setSales(salesList);
-        setClients(clientsList);
+        salesList = mockDb.sales.list();
+        clientsList = mockDb.clients.list();
       } else {
         // Supabase DB loading
         const { data: clientsData } = await supabase!.from('clients').select('*');
@@ -51,9 +70,17 @@ export default function VendasHistoryPage() {
           .select('*, clients(name)')
           .order('created_at', { ascending: false });
 
-        setClients(clientsData || []);
-        setSales(salesData || []);
+        clientsList = clientsData || [];
+        salesList = salesData || [];
       }
+
+      // Filter sales for vendedores
+      if (userProfile && userProfile.role === 'vendedor') {
+        salesList = salesList.filter(s => s.seller_id === userProfile.id);
+      }
+
+      setClients(clientsList);
+      setSales(salesList);
     } catch (err) {
       console.error('Error fetching sales history:', err);
     } finally {

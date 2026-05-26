@@ -53,76 +53,113 @@ export default function DashboardPage() {
 
   // Sale detail selection state
   const [selectedSale, setSelectedSale] = useState<any | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Load dashboard data
   const loadDashboardData = async () => {
     try {
+      // 1. Get current user profile first
+      let userProfile: any = null;
       if (isMockMode) {
-        const clientsList = mockDb.clients.list();
-        const salesList = mockDb.sales.list();
-        
-        // Calculate Metrics
-        const todayStr = new Date().toISOString().split('T')[0];
-        const todaySales = salesList.filter(s => s.created_at.startsWith(todayStr) && !s.is_canceled);
-        const todayRevenue = todaySales.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
-        
-        // Sum total outstanding fiado for all clients
-        const totalFiado = clientsList.reduce((acc, client) => {
-          return acc + mockDb.fiado.getBalance(client.id);
-        }, 0);
-
-        setClients(clientsList);
-        setSales(salesList);
-        setMetrics({
-          todayRevenue,
-          totalFiado,
-          activeClients: clientsList.length,
-          todaySalesCount: todaySales.length
-        });
-        
-        // Generate AI insights
-        generateRuleBasedInsights(clientsList, salesList);
+        userProfile = mockDb.getCurrentUser();
       } else {
-        const { data: clientData } = await supabase!.from('clients').select('*');
-        const { data: salesData } = await supabase!.from('sales').select('*, clients(name)').order('created_at', { ascending: false });
-        
-        const clientsList = clientData || [];
-        const salesList = salesData || [];
+        const { data: { session } } = await supabase!.auth.getSession();
+        if (session) {
+          const { data: profile } = await supabase!
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          userProfile = profile;
+        }
+      }
+      setCurrentUser(userProfile);
 
-        const todayStr = new Date().toISOString().split('T')[0];
-        const todaySales = salesList.filter(s => s.created_at.startsWith(todayStr) && !s.is_canceled);
-        const todayRevenue = todaySales.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
+      // 2. Fetch lists based on mode
+      let clientsList: any[] = [];
+      let salesList: any[] = [];
+      let activeFiadoSales: any[] = [];
+      let activePayments: any[] = [];
 
-        // Sum total fiado in db
-        // In Supabase, we sum sales of payment_method='fiado' and status='pendente' minus payments
-        const { data: activeFiadoSales } = await supabase!
-          .from('sales')
-          .select('total_amount, is_canceled')
-          .eq('payment_method', 'fiado')
-          .eq('status', 'pendente');
-        
-        const { data: activePayments } = await supabase!
-          .from('fiado_payments')
-          .select('amount');
+      if (isMockMode) {
+        clientsList = mockDb.clients.list();
+        salesList = mockDb.sales.list();
+        activeFiadoSales = salesList.filter(s => s.payment_method === 'fiado' && s.status === 'pendente');
+        activePayments = mockStore.getFiadoPayments();
+      } else {
+        const [clientsRes, salesRes, fiadoSalesRes, paymentsRes] = await Promise.all([
+          supabase!.from('clients').select('*'),
+          supabase!.from('sales').select('*, clients(name)').order('created_at', { ascending: false }),
+          supabase!.from('sales').select('client_id, seller_id, total_amount, is_canceled').eq('payment_method', 'fiado').eq('status', 'pendente'),
+          supabase!.from('fiado_payments').select('client_id, amount')
+        ]);
 
-        const totalDebt = (activeFiadoSales || [])
+        clientsList = clientsRes.data || [];
+        salesList = salesRes.data || [];
+        activeFiadoSales = fiadoSalesRes.data || [];
+        activePayments = paymentsRes.data || [];
+      }
+
+      // 3. Filter sales list for Vendedores (they only see their own sales)
+      let displayedSales = [...salesList];
+      if (userProfile && userProfile.role === 'vendedor') {
+        displayedSales = displayedSales.filter(s => s.seller_id === userProfile.id);
+      }
+
+      // 4. Calculate stats
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todaySales = displayedSales.filter(s => s.created_at.startsWith(todayStr) && !s.is_canceled);
+      const todayRevenue = todaySales.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
+      const todaySalesCount = todaySales.length;
+
+      // Calculate total outstanding fiado
+      let totalFiado = 0;
+      if (userProfile && userProfile.role === 'vendedor') {
+        // Proportional allocation of client outstanding debt to this seller
+        const salesByClient: Record<string, any[]> = {};
+        activeFiadoSales.filter((s: any) => !s.is_canceled).forEach((s: any) => {
+          if (!salesByClient[s.client_id]) salesByClient[s.client_id] = [];
+          salesByClient[s.client_id].push(s);
+        });
+
+        const paymentsByClient: Record<string, number> = {};
+        activePayments.forEach((p: any) => {
+          paymentsByClient[p.client_id] = (paymentsByClient[p.client_id] || 0) + Number(p.amount);
+        });
+
+        Object.entries(salesByClient).forEach(([clientId, clientSales]) => {
+          const clientTotalDebt = clientSales.reduce((sum, s) => sum + Number(s.total_amount), 0);
+          const clientTotalPaid = paymentsByClient[clientId] || 0;
+          const clientBalance = Math.max(0, clientTotalDebt - clientTotalPaid);
+
+          if (clientBalance > 0) {
+            const sellerSales = clientSales.filter((s) => s.seller_id === userProfile.id);
+            const sellerDebt = sellerSales.reduce((sum, s) => sum + Number(s.total_amount), 0);
+            const sellerShare = clientTotalDebt > 0 ? sellerDebt / clientTotalDebt : 0;
+            totalFiado += clientBalance * sellerShare;
+          }
+        });
+      } else {
+        // Admin: total fiado is sum of all non-canceled pending fiado sales minus all payments
+        const totalDebt = activeFiadoSales
           .filter((s: any) => !s.is_canceled)
           .reduce((acc, curr) => acc + Number(curr.total_amount), 0);
-        const totalPaid = (activePayments || []).reduce((acc, curr) => acc + Number(curr.amount), 0);
-        const totalFiado = Math.max(0, totalDebt - totalPaid);
-
-        setClients(clientsList);
-        setSales(salesList);
-        setMetrics({
-          todayRevenue,
-          totalFiado,
-          activeClients: clientsList.length,
-          todaySalesCount: todaySales.length
-        });
-
-        // Trigger Claude AI insights check or use cache
-        fetchAiInsights();
+        const totalPaid = activePayments.reduce((acc, curr) => acc + Number(curr.amount), 0);
+        totalFiado = Math.max(0, totalDebt - totalPaid);
       }
+
+      setClients(clientsList);
+      setSales(displayedSales);
+      setMetrics({
+        todayRevenue,
+        totalFiado,
+        activeClients: clientsList.length,
+        todaySalesCount
+      });
+
+      // 5. Trigger insights loading with the filtered context
+      await fetchAiInsights(userProfile, clientsList, displayedSales);
+
     } catch (err) {
       console.error('Error fetching dashboard statistics:', err);
     } finally {
@@ -169,7 +206,22 @@ export default function DashboardPage() {
 
     // 2. Heavy outstanding Fiado alert
     clientsList.forEach(client => {
-      const balance = mockDb.fiado.getBalance(client.id);
+      let balance = 0;
+      if (isMockMode) {
+        const totalBal = mockDb.fiado.getBalance(client.id);
+        if (currentUser?.role === 'vendedor' && totalBal > 0) {
+          const clientSales = mockDb.sales.list().filter(s => s.client_id === client.id && s.payment_method === 'fiado' && s.status === 'pendente' && !s.is_canceled);
+          const sellerDebt = clientSales.filter(s => s.seller_id === currentUser.id).reduce((sum, s) => sum + Number(s.total_amount), 0);
+          const totalDebt = clientSales.reduce((sum, s) => sum + Number(s.total_amount), 0);
+          balance = totalDebt > 0 ? totalBal * (sellerDebt / totalDebt) : 0;
+        } else {
+          balance = totalBal;
+        }
+      } else {
+        const clientSales = salesList.filter(s => s.client_id === client.id && s.payment_method === 'fiado' && s.status === 'pendente' && !s.is_canceled);
+        balance = clientSales.reduce((sum, s) => sum + Number(s.total_amount), 0);
+      }
+
       if (balance > 500) {
         insights.push({
           type: 'danger',
@@ -218,25 +270,33 @@ export default function DashboardPage() {
     setAiInsights(insights.slice(0, 3));
   };
 
-  const fetchAiInsights = async () => {
+  const fetchAiInsights = async (userProfile?: any, currentClients?: any[], currentSales?: any[]) => {
     setLoadingInsights(true);
     try {
+      const activeUser = (userProfile && typeof userProfile.role === 'string') ? userProfile : currentUser;
+      const activeClients = Array.isArray(currentClients) ? currentClients : clients;
+      const activeSales = Array.isArray(currentSales) ? currentSales : sales;
+
       if (isMockMode) {
         await new Promise(r => setTimeout(r, 800));
-        generateRuleBasedInsights(clients, sales);
+        generateRuleBasedInsights(activeClients, activeSales);
       } else {
-        const res = await fetch('/api/ai/insights');
+        const sellerId = activeUser?.id || '';
+        const role = activeUser?.role || '';
+        const res = await fetch(`/api/ai/insights?seller_id=${sellerId}&role=${role}`);
         if (res.ok) {
           const data = await res.json();
           const loadedInsights = data.insights || [];
           setAiInsights(loadedInsights.slice(0, 3));
         } else {
           // If Claude integration fails, fallback to rules
-          generateRuleBasedInsights(clients, sales);
+          generateRuleBasedInsights(activeClients, activeSales);
         }
       }
     } catch {
-      generateRuleBasedInsights(clients, sales);
+      const activeClients = Array.isArray(currentClients) ? currentClients : clients;
+      const activeSales = Array.isArray(currentSales) ? currentSales : sales;
+      generateRuleBasedInsights(activeClients, activeSales);
     } finally {
       setLoadingInsights(false);
     }
@@ -455,7 +515,7 @@ export default function DashboardPage() {
                 <span>Central Inteligente de Decisões</span>
               </h3>
               <button 
-                onClick={fetchAiInsights} 
+                onClick={() => fetchAiInsights()} 
                 className={styles.aiHeaderBtn}
                 disabled={loadingInsights}
               >

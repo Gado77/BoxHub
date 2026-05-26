@@ -24,50 +24,80 @@ export default function RelatoriosPage() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7days' | '30days' | 'all'>('7days');
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const loadData = async () => {
     setLoading(true);
     try {
+      // Load current user profile first
+      let userProfile = null;
       if (isMockMode) {
-        const salesList = mockDb.sales.list();
-        const clientsList = mockDb.clients.list();
-        const productsList = mockDb.products.list();
-        const allVariants = mockStore.getVariants();
-        const saleItems = mockStore.getSaleItems();
-        const profilesList = mockDb.profiles.list();
-
-        setSales(salesList);
-        setClients(clientsList);
-        setProfiles(profilesList);
-        
-        // Map sale items with names
-        const activeSaleIds = new Set(salesList.filter(s => !s.is_canceled).map(s => s.id));
-        const activeItems = saleItems.filter(item => activeSaleIds.has(item.sale_id));
-        const mappedItems = activeItems.map(item => {
-          const product = productsList.find(p => p.id === item.product_id);
-          const variant = allVariants.find(v => v.id === item.variant_id);
-          return {
-            ...item,
-            product_name: product ? product.name : 'Produto Desconhecido',
-            product_type: product ? (product.type || 'fruta') : 'fruta',
-            product_category: product ? (product.category || '') : '',
-            variant_name: variant ? variant.name : ''
-          };
-        });
-        setItems(mappedItems);
+        userProfile = mockDb.getCurrentUser();
       } else {
-        const { data: clientsData } = await supabase!.from('clients').select('*');
-        const { data: profilesData } = await supabase!.from('profiles').select('*');
-        const { data: salesData } = await supabase!
-          .from('sales')
-          .select('*, clients(name)')
-          .order('created_at', { ascending: false });
+        const { data: { session } } = await supabase!.auth.getSession();
+        if (session) {
+          const { data: profile } = await supabase!
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          userProfile = profile;
+        }
+      }
+      setCurrentUser(userProfile);
 
-        const activeSales = (salesData || []).filter(s => !s.is_canceled);
-        const activeSaleIds = activeSales.map(s => s.id);
+      let salesList: any[] = [];
+      let clientsList: any[] = [];
+      let productsList: any[] = [];
+      let allVariants: any[] = [];
+      let saleItems: any[] = [];
+      let profilesList: any[] = [];
 
-        let mappedItems: any[] = [];
-        if (activeSaleIds.length > 0) {
+      if (isMockMode) {
+        salesList = mockDb.sales.list();
+        clientsList = mockDb.clients.list();
+        productsList = mockDb.products.list();
+        allVariants = mockStore.getVariants();
+        saleItems = mockStore.getSaleItems();
+        profilesList = mockDb.profiles.list();
+      } else {
+        const [clientsRes, profilesRes, salesRes] = await Promise.all([
+          supabase!.from('clients').select('*'),
+          supabase!.from('profiles').select('*'),
+          supabase!.from('sales').select('*, clients(name)').order('created_at', { ascending: false })
+        ]);
+
+        clientsList = clientsRes.data || [];
+        profilesList = profilesRes.data || [];
+        salesList = salesRes.data || [];
+      }
+
+      // Filter sales for Vendedor role
+      if (userProfile && userProfile.role === 'vendedor') {
+        salesList = salesList.filter(s => s.seller_id === userProfile.id);
+      }
+
+      // Map sale items with names
+      const activeSales = salesList.filter(s => !s.is_canceled);
+      const activeSaleIds = activeSales.map(s => s.id);
+      const activeSaleIdsSet = new Set(activeSaleIds);
+
+      let mappedItems: any[] = [];
+      if (activeSaleIds.length > 0) {
+        if (isMockMode) {
+          const activeItems = saleItems.filter(item => activeSaleIdsSet.has(item.sale_id));
+          mappedItems = activeItems.map(item => {
+            const product = productsList.find(p => p.id === item.product_id);
+            const variant = allVariants.find(v => v.id === item.variant_id);
+            return {
+              ...item,
+              product_name: product ? product.name : 'Produto Desconhecido',
+              product_type: product ? (product.type || 'fruta') : 'fruta',
+              product_category: product ? (product.category || '') : '',
+              variant_name: variant ? variant.name : ''
+            };
+          });
+        } else {
           const { data: itemsData } = await supabase!
             .from('sale_items')
             .select('*, products(name, type, category), product_variants(name)')
@@ -81,12 +111,12 @@ export default function RelatoriosPage() {
             variant_name: item.product_variants?.name || ''
           }));
         }
-
-        setSales(salesData || []);
-        setClients(clientsData || []);
-        setProfiles(profilesData || []);
-        setItems(mappedItems);
       }
+
+      setSales(salesList);
+      setClients(clientsList);
+      setProfiles(profilesList);
+      setItems(mappedItems);
     } catch (err) {
       console.error('Error loading reports data:', err);
     } finally {
@@ -991,7 +1021,7 @@ export default function RelatoriosPage() {
           </div>
 
           {/* Rankings Grid (Clients & Sellers) */}
-          <div className={styles.rankingsGrid}>
+          <div className={currentUser?.role === 'admin' ? styles.rankingsGrid : styles.rankingsGridSingle}>
             {/* Top Clients Table */}
             <div className={`glass ${styles.rankingCard}`}>
               <div className={styles.rankingHeader}>
@@ -1015,7 +1045,7 @@ export default function RelatoriosPage() {
                       const clientAverage = c.totalSpent / c.salesCount;
                       return (
                         <tr key={idx}>
-                          <td style={{ textAlign: 'center' }}>
+                           <td style={{ textAlign: 'center' }}>
                             <span className={`${styles.positionBadge} ${styles[`pos${idx + 1}`]}`}>
                               {idx + 1}º
                             </span>
@@ -1052,62 +1082,64 @@ export default function RelatoriosPage() {
               </div>
             </div>
 
-            {/* Top Sellers Table */}
-            <div className={`glass ${styles.rankingCard}`}>
-              <div className={styles.rankingHeader}>
-                <Users size={18} style={{ color: 'var(--primary)' }} />
-                <h3 className={styles.rankingTitle}>Ranking de Vendedores (Desempenho da Equipe)</h3>
-              </div>
-              <div className={styles.tableWrapper}>
-                <table className={styles.rankingTable}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: '50px', textAlign: 'center' }}>Posição</th>
-                      <th>Vendedor</th>
-                      <th style={{ textAlign: 'center' }}>Vendas</th>
-                      <th style={{ textAlign: 'right' }}>Total Vendido</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.topSellers.map((s, idx) => (
-                      <tr key={idx}>
-                        <td style={{ textAlign: 'center' }}>
-                          <span className={`${styles.positionBadge} ${styles[`pos${idx + 1}`]}`}>
-                            {idx + 1}º
-                          </span>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                            <div className={styles.sellerAvatar}>
-                              {s.avatarUrl ? (
-                                <img src={s.avatarUrl} alt={s.name} className={styles.sellerAvatarImg} />
-                              ) : (
-                                s.name.substring(0, 2).toUpperCase()
-                              )}
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                              <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{s.name}</span>
-                              <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>{s.role}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ textAlign: 'center' }}>{s.salesCount}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>
-                          {s.totalSold.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </td>
-                      </tr>
-                    ))}
-                    {stats.topSellers.length === 0 && (
+            {/* Top Sellers Table (Admin Only) */}
+            {currentUser?.role === 'admin' && (
+              <div className={`glass ${styles.rankingCard}`}>
+                <div className={styles.rankingHeader}>
+                  <Users size={18} style={{ color: 'var(--primary)' }} />
+                  <h3 className={styles.rankingTitle}>Ranking de Vendedores (Desempenho da Equipe)</h3>
+                </div>
+                <div className={styles.tableWrapper}>
+                  <table className={styles.rankingTable}>
+                    <thead>
                       <tr>
-                        <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>
-                          Nenhum vendedor registrado neste período
-                        </td>
+                        <th style={{ width: '50px', textAlign: 'center' }}>Posição</th>
+                        <th>Vendedor</th>
+                        <th style={{ textAlign: 'center' }}>Vendas</th>
+                        <th style={{ textAlign: 'right' }}>Total Vendido</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {stats.topSellers.map((s, idx) => (
+                        <tr key={idx}>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className={`${styles.positionBadge} ${styles[`pos${idx + 1}`]}`}>
+                              {idx + 1}º
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                              <div className={styles.sellerAvatar}>
+                                {s.avatarUrl ? (
+                                  <img src={s.avatarUrl} alt={s.name} className={styles.sellerAvatarImg} />
+                                ) : (
+                                  s.name.substring(0, 2).toUpperCase()
+                                )}
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{s.name}</span>
+                                <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>{s.role}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>{s.salesCount}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>
+                            {s.totalSold.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </td>
+                        </tr>
+                      ))}
+                      {stats.topSellers.length === 0 && (
+                        <tr>
+                          <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>
+                            Nenhum vendedor registrado neste período
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </>
       )}

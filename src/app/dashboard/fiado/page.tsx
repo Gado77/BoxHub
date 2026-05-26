@@ -241,14 +241,17 @@ export default function FiadoPage() {
   // Filter and sort clients
   const filteredClients = clients
     .filter((c) => {
+      // Only show clients with outstanding fiado balance
+      if (c.balance <= 0) return false;
+
       // Text Filter
       const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
       
       // Risk Filter
       if (riskFilter === 'todos') return matchesSearch;
-      if (riskFilter === 'alto') return matchesSearch && c.balance > 0 && c.usedPercent > 75;
-      if (riskFilter === 'atencao') return matchesSearch && c.balance > 0 && c.usedPercent >= 10 && c.usedPercent <= 75;
-      if (riskFilter === 'saudavel') return matchesSearch && (c.balance === 0 || c.usedPercent < 10);
+      if (riskFilter === 'alto') return matchesSearch && c.usedPercent > 75;
+      if (riskFilter === 'atencao') return matchesSearch && c.usedPercent >= 10 && c.usedPercent <= 75;
+      if (riskFilter === 'saudavel') return matchesSearch && c.usedPercent < 10;
       
       return matchesSearch;
     })

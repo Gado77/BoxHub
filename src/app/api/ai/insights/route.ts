@@ -19,6 +19,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Supabase não configurado.' }, { status: 400 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const sellerId = searchParams.get('seller_id');
+    const role = searchParams.get('role');
+
     // Retrieve active session authorization header to verify caller identity
     const authHeader = request.headers.get('Authorization') || '';
     const token = authHeader.replace('Bearer ', '');
@@ -35,7 +39,12 @@ export async function GET(request: Request) {
     const { data: sales } = await supabaseAdmin.from('sales').select('*');
 
     const clientsList = clients || [];
-    const salesList = sales || [];
+    let salesList = sales || [];
+
+    // Filter sales if current user is vendedor
+    if (role === 'vendedor' && sellerId) {
+      salesList = salesList.filter(s => s.seller_id === sellerId);
+    }
 
     // Helper: Compute dynamic metrics for the prompt
     const totalRevenue = salesList.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
@@ -151,7 +160,16 @@ export async function GET(request: Request) {
     };
 
     const systemPrompt = `Você é um analista de dados especialista em finanças e CRM de comércio de hortifrúti.
-Sua tarefa é ler um dump de dados de vendas de caixas de frutas do CEAGESP e extrair de 2 a 4 insights analíticos/recomendações inteligentes acionáveis para o administrador do Box.
+Sua tarefa é ler um dump de dados de vendas de caixas de frutas do CEAGESP e extrair de 2 a 4 insights analíticos/recomendações inteligentes acionáveis para o usuário do Box.
+O usuário atual possui o papel de: ${role === 'vendedor' ? 'Vendedor (seller)' : 'Administrador (admin)'}.
+
+${role === 'vendedor' ? `Diretrizes específicas para o Vendedor:
+1. Fale diretamente com o vendedor sobre seu próprio faturamento e desempenho pessoal.
+2. NUNCA compare o faturamento deste vendedor com outros colegas de forma competitiva ou desmotivadora (ex: "vendedor X vendeu mais que você").
+3. NÃO exponha o faturamento consolidado global da empresa.
+4. Foque em oportunidades de crescimento pessoal do vendedor (ex: "seu faturamento cresceu R$ 10.000 este mês") e em avisos sobre seus próprios clientes inativos ou fiados.` : `Diretrizes específicas para o Administrador:
+1. Forneça insights consolidados do faturamento global e devedores da empresa.
+2. Identifique tendências de faturamento do box, comportamento de clientes e desempenho da equipe de vendedores.`}
 
 Dores principais do comerciante:
 1. Clientes inativos (ex: cliente que comprava sempre e sumiu).
@@ -159,7 +177,7 @@ Dores principais do comerciante:
 3. Crescimento de faturamento ou concentração de vendas.
 
 Instruções importantes:
-- Escreva os textos dos insights em português, de forma curta, direta e amigável para o comerciante.
+- Escreva os textos dos insights em português, de forma curta, direta e amigável.
 - Use negrito com markdown (ex: **Nome do Cliente**) para destacar nomes e valores.
 - O formato de resposta DEVE ser um array JSON válido de objetos com os campos "type" e "text".
 - O campo "type" deve ser obrigatoriamente um de: "warning" (para alertas de sumiço), "danger" (para fiados graves em aberto), "success" (para crescimento de clientes ou faturamento).
