@@ -33,6 +33,8 @@ Este documento registra cronologicamente todas as **28 fases de desenvolvimento*
 - [Fase 26 — Ajuste e Edição de Estoque de Produtos e Variantes](#fase-26-ajuste-e-edicao-de-estoque-de-produtos-e-variantes)
 - [Fase 27 — Central de Performance de Vendedores (Acesso Exclusivo Admin)](#fase-27-central-de-performance-de-vendedores-acesso-exclusivo-admin)
 - [Fase 28 — Central de SuperAdmin (Monitoramento Global do Sistema)](#fase-28-central-de-superadmin-monitoramento-global-do-sistema)
+- [Fase 29 — Preparação de Produção, Formatação pt-BR e Onboarding Pós-Cadastro](#fase-29-preparacao-de-producao-formatacao-pt-br-e-onboarding-pos-cadastro)
+- [Fase 30 — Plano de Remediação de Produção - Fase 1: Segurança Completa](#fase-30-plano-de-remediacao-de-producao-fase-1-seguranca-completa)
 
 ---
 
@@ -166,3 +168,12 @@ Este documento registra cronologicamente todas as **28 fases de desenvolvimento*
     *   **Validações no Modal de Vendas:** Implementadas travas de segurança client-side em `NewSaleModal.tsx` para garantir que o preço e a quantidade inserida no carrinho sejam estritamente superiores a zero.
     *   **Formatação Monetária pt-BR:** Padronizado todo o fluxo financeiro de moedas para usar o formato brasileiro oficial (`toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })`) no modal de nova venda, nos insights do dashboard, na listagem de fiados e no gerenciamento de clientes.
     *   **Onboarding Pós-Cadastro:** Desenvolvida a rota `/onboarding` com layout glassmorphic para configurar as informações essenciais da firma (localização do box/pavilhão no CEAGESP, telefone/WhatsApp comercial, segmento de atuação de frutas/legumes, limite de fiado padrão e toggle para ativação de controle físico de estoque) logo após a criação da conta.
+
+## Fase 30 — Plano de Remediação de Produção - Fase 1: Segurança Completa
+*   **Descrição:** Execução da Fase 1 (Segurança) do Plano de Remediação Priorizado para Produção Real do BoxHub.
+*   **Implementação:**
+    *   **Clientes Supabase SSR:** Criação de `supabase-browser.ts` e `supabase-server.ts` usando `@supabase/ssr` com cookies do Next.js 16 para gestão robusta de sessões.
+    *   **Middleware de Proteção:** Criação de `middleware.ts` para proteger rotas `/dashboard/*` e bloquear APIs (`/api/*`) de requisições sem sessão válida, além de validar a role `superadmin` na borda.
+    *   **Segurança Tenant em API e Checkout:** Modificados endpoints `/api/ai/insights` e `/api/team/add` para buscar perfil e organização diretamente da sessão JWT, prevenindo injeções e vazamentos. Correção na criação de sessão Stripe para enviar `subscription_data.metadata.orgId` permitindo que o webhook atualize as organizações.
+    *   **Rate Limiting e Credenciais:** Utilitário in-memory `rate-limit.ts` adicionado com restrições por IP em rotas críticas (IA, checkout e convites). Remoção de senhas padrões e variáveis obsoletas.
+
