@@ -72,6 +72,13 @@ export default function DashboardLayout({
           if (profile) {
             setUser(profile);
             setOrg(profile.organizations);
+          } else {
+            // Profile not found in database (e.g. user was deleted in backend)
+            await supabase!.auth.signOut();
+            setUser(null);
+            setOrg(null);
+            router.push('/login');
+            return;
           }
         }
       } catch (err) {
