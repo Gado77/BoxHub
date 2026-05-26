@@ -23,6 +23,17 @@ export default function LoginPage() {
   // Password visibility states
   const [showPassword, setShowPassword] = useState(false);
   const [showRegPassword, setShowRegPassword] = useState(false);
+  const [isDev, setIsDev] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsDev(
+        window.location.hostname === 'localhost' || 
+        window.location.hostname === '127.0.0.1' || 
+        window.location.hostname.startsWith('192.168.')
+      );
+    }
+  }, []);
 
   // Check if already logged in (redirect to dashboard)
   useEffect(() => {
@@ -208,27 +219,9 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', marginBottom: '1.25rem' }}>
-            <div className="badge badge-danger" style={{ display: 'flex', gap: '0.5rem', padding: '0.75rem', borderRadius: 'var(--radius-md)', width: '100%' }}>
-              <AlertCircle size={16} style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: '0.85rem' }}>{error}</span>
-            </div>
-            {!isMockMode && (
-              <div style={{ 
-                fontSize: '0.75rem', 
-                color: 'var(--text-muted)', 
-                background: 'rgba(255, 255, 255, 0.03)', 
-                border: '1px solid var(--border-color)', 
-                borderRadius: '6px', 
-                padding: '0.6rem 0.8rem',
-                lineHeight: '1.4'
-              }}>
-                <strong>Dica do Desenvolvedor:</strong> O BoxHub está rodando com o banco de dados Supabase real. 
-                Os perfis do modo demonstração local (como <code>superadmin@boxhub.com.br</code>) não existem na base.
-                <br/><br/>
-                Para acessar como <strong>SuperAdmin</strong>, vá na aba <strong>Cadastrar Box</strong> e crie uma conta usando um e-mail que contenha <code>superadmin</code> (ex: <code>superadmin@boxhub.com.br</code>). O sistema a configurará automaticamente com a permissão correta.
-              </div>
-            )}
+          <div className="badge badge-danger" style={{ display: 'flex', gap: '0.5rem', width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1.25rem' }}>
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: '0.85rem' }}>{error}</span>
           </div>
         )}
 
@@ -363,6 +356,28 @@ export default function LoginPage() {
               {loading ? <span className="loading-spinner"></span> : 'Criar Conta e Iniciar'}
             </button>
           </form>
+        )}
+
+        {isDev && !isMockMode && (
+          <div style={{ 
+            fontSize: '0.75rem', 
+            color: 'var(--text-muted)', 
+            background: 'rgba(255, 255, 255, 0.03)', 
+            border: '1px solid var(--border-color)', 
+            borderRadius: '6px', 
+            padding: '0.6rem 0.8rem',
+            lineHeight: '1.4',
+            marginTop: '1.25rem',
+            marginBottom: '1.25rem',
+            width: '100%',
+            textAlign: 'left'
+          }}>
+            <strong>Dica de Desenvolvimento (SuperAdmin):</strong> 
+            <br />
+            • Para criar a sua conta de SuperAdmin pela primeira vez no Supabase real, vá na aba <strong>Cadastrar Box</strong> e crie uma conta usando um e-mail que contenha a palavra <code>superadmin</code>.
+            <br />
+            • Se você já criou a conta em outro dispositivo, <strong>basta fazer o login normalmente</strong> digitando o e-mail e senha no formulário acima (aba "Entrar") e clicar em "Acessar Conta".
+          </div>
         )}
 
         {isMockMode ? (
