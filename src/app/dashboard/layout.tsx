@@ -20,7 +20,8 @@ import {
   Menu,
   X,
   TrendingUp,
-  Coins
+  Coins,
+  UserCheck
 } from 'lucide-react';
 import styles from './dashboard.module.css';
 
@@ -162,6 +163,7 @@ export default function DashboardLayout({
     if (pathname.includes('/clientes')) return 'Clientes';
     if (pathname.includes('/fiado')) return 'Gestão de Fiado';
     if (pathname.includes('/vendas')) return 'Histórico de Vendas';
+    if (pathname.includes('/vendedores')) return 'Vendedores';
     if (pathname.includes('/produtos')) return 'Produtos';
     if (pathname.includes('/relatorios')) return 'Relatórios';
     if (pathname.includes('/configuracoes')) return 'Configurações';
@@ -257,6 +259,16 @@ export default function DashboardLayout({
               <TrendingUp size={20} />
               {!isCollapsed && <span>Relatórios</span>}
             </Link>
+            {user?.role === 'admin' && (
+              <Link 
+                href="/dashboard/vendedores" 
+                className={`${styles.navLink} ${isActive('/dashboard/vendedores') ? styles.navLinkActive : ''}`}
+                title="Vendedores"
+              >
+                <UserCheck size={20} />
+                {!isCollapsed && <span>Vendedores</span>}
+              </Link>
+            )}
             <Link 
               href="/dashboard/configuracoes" 
               className={`${styles.navLink} ${isActive('/dashboard/configuracoes') ? styles.navLinkActive : ''}`}
@@ -517,6 +529,18 @@ export default function DashboardLayout({
                   </div>
                   <span className={styles.menuGridItemLabel}>Relatórios</span>
                 </Link>
+                {user?.role === 'admin' && (
+                  <Link 
+                    href="/dashboard/vendedores" 
+                    className={`${styles.menuSheetGridItem} ${isActive('/dashboard/vendedores') ? styles.menuGridActive : ''}`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <div className={styles.menuIconWrapper} style={{ backgroundColor: 'rgba(14, 165, 233, 0.15)', color: '#0ea5e9' }}>
+                      <UserCheck size={24} />
+                    </div>
+                    <span className={styles.menuGridItemLabel}>Vendedores</span>
+                  </Link>
+                )}
                 <Link 
                   href="/dashboard/configuracoes" 
                   className={`${styles.menuSheetGridItem} ${isActive('/dashboard/configuracoes') ? styles.menuGridActive : ''}`}
