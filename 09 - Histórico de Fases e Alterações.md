@@ -37,6 +37,7 @@ Este documento registra cronologicamente todas as **28 fases de desenvolvimento*
 - [Fase 30 — Plano de Remediação de Produção - Fase 1: Segurança Completa](#fase-30-plano-de-remediacao-de-producao-fase-1-seguranca-completa)
 - [Fase 31 — Plano de Remediação de Produção - Fase 2: Modularização da Arquitetura](#fase-31-plano-de-remediacao-de-producao-fase-2-modularizacao-da-arquitetura)
 - [Fase 32 — Plano de Remediação de Produção - Fase 3: Alinhamento de Banco e Paginação](#fase-32-plano-de-remediacao-de-producao-fase-3-alinhamento-de-banco-e-paginacao)
+- [Fase 33 — Plano de Remediação de Produção - Fase 4: Endpoint de Diagnóstico e Monitoramento](#fase-33-plano-de-remediacao-de-producao-fase-4-endpoint-de-diagnostico-e-monitoramento)
 
 ---
 
@@ -197,6 +198,14 @@ Este documento registra cronologicamente todas as **28 fases de desenvolvimento*
     *   **Correção de Esquema SQL:** Adicionada a coluna `updated_at timestamptz not null default now()` à tabela `public.product_variants` no script [schema.sql](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/supabase/schema.sql) para garantir o alinhamento total com as tipagens e interfaces TypeScript do app, evitando erros de gravação e inconsistência no banco de dados Supabase real em produção.
     *   **Paginação Progressiva de Vendas:** Introduzimos paginação progressiva client-side (com botão "Carregar Mais Vendas") no histórico de transações ([vendas/page.tsx](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/dashboard/vendas/page.tsx)). As vendas são exibidas em lotes de 15, e o estado é resetado automaticamente ao aplicar novos filtros ou termos de pesquisa. Isso acelerou a renderização do DOM e preveniu travamentos do navegador ao carregar histórico volumoso.
     *   **Build de Validação:** A compilação foi finalizada com sucesso, confirmando estabilidade operacional total.
+
+## Fase 33 — Plano de Remediação de Produção - Fase 4: Endpoint de Diagnóstico e Monitoramento
+*   **Descrição:** Execução parcial da Fase 4 (Qualidade) para fornecer diagnóstico de conectividade do banco real e das APIs externas.
+*   **Implementação:**
+    *   **Endpoint de Saúde (/api/health):** Criamos a rota de API [/api/health/route.ts](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/api/health/route.ts). O endpoint testa dinamicamente a conectividade e leitura do banco real Supabase, a presença das credenciais privadas de Stripe/Claude e retorna o status em JSON com timestamps do servidor.
+    *   **Configuração do Middleware:** Atualizamos a verificação em [middleware.ts](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/middleware.ts) para permitir o bypass do roteador de autenticação na rota `/api/health`. Isso permite que robôs de uptime ou painéis externos (como da Vercel ou GCP) monitorem a saúde do container sem precisar de credenciais JWT de usuários logados.
+    *   **Build de Validação:** Projeto compilado com sucesso garantindo estabilidade e integridade nos fluxos do roteador Next.js.
+
 
 
 

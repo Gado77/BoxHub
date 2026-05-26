@@ -73,8 +73,9 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Proteger rotas de API (exceto webhook do Stripe)
-  if (isApiRoute && !isStripeWebhook) {
+  // Proteger rotas de API (exceto webhook do Stripe e health check público)
+  const isHealthCheck = request.nextUrl.pathname === '/api/health';
+  if (isApiRoute && !isStripeWebhook && !isHealthCheck) {
     if (!user) {
       return new NextResponse(
         JSON.stringify({ error: 'Não autorizado. Sessão inválida ou expirada.' }),
