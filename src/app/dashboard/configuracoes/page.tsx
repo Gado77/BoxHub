@@ -347,6 +347,7 @@ export default function ConfiguracoesPage() {
     setModalLoading(true);
     try {
       mockStore.resetAll();
+      window.location.reload();
     } catch (err) {
       console.error(err);
       setModalLoading(false);
@@ -360,7 +361,12 @@ export default function ConfiguracoesPage() {
         const res = await fetch('/api/stripe/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ priceId: 'PRO_PRICE' })
+          body: JSON.stringify({ 
+            priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || 'price_123',
+            orgId: org?.id,
+            orgName: org?.name,
+            userEmail: currentUser?.email
+          })
         });
         const data = await res.json();
         if (data.url) window.location.href = data.url;
@@ -792,6 +798,33 @@ export default function ConfiguracoesPage() {
             </div>
           </div>
 
+          {/* Card: Danger Zone (Mock Mode only) */}
+          {isMockMode && isUserAdmin && (
+            <div className={`${styles.card} glass`} style={{ border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <div className={styles.cardHeader}>
+                <h3 className={styles.cardTitle} style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <AlertTriangle className={styles.titleIcon} size={18} style={{ color: 'var(--danger)' }} />
+                  <span>Zona de Perigo (Sandbox)</span>
+                </h3>
+              </div>
+              <div className={styles.settingRow} style={{ borderBottom: 'none', paddingBottom: 0 }}>
+                <div className={styles.settingMeta}>
+                  <span className={styles.settingLabel} style={{ color: 'var(--danger)' }}>Reiniciar Dados de Simulação</span>
+                  <span className={styles.settingDesc}>
+                    Apaga todas as empresas, vendas, clientes e estoques salvos no armazenamento local deste navegador, restaurando o estado original de testes.
+                  </span>
+                </div>
+                <button 
+                  type="button" 
+                  className="btn-danger" 
+                  onClick={() => setIsResetModalOpen(true)}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  Reiniciar Dados
+                </button>
+              </div>
+            </div>
+          )}
 
         </div>
 

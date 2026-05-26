@@ -24,6 +24,7 @@ create table public.profiles (
     organization_id uuid not null references public.organizations(id) on delete cascade,
     name text not null,
     role text not null default 'admin' check (role in ('admin', 'vendedor', 'superadmin')),
+    email text,
     avatar_url text,
     created_at timestamptz not null default now()
 );

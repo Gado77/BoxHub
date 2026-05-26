@@ -73,7 +73,7 @@ export default function VendedoresPage() {
       } else {
         const [profilesRes, salesRes, clientsRes] = await Promise.all([
           supabase!.from('profiles').select('*'),
-          supabase!.from('sales').select('*, clients(name)').order('created_at', { ascending: false }),
+          supabase!.from('sales').select('*, clients(name), profiles:seller_id(name, role, email, avatar_url)').order('created_at', { ascending: false }),
           supabase!.from('clients').select('*')
         ]);
         teamList = profilesRes.data || [];

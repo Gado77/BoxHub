@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Anthropic } from '@anthropic-ai/sdk';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase-server';
+import { rateLimit } from '@/lib/rate-limit';
 
 const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
 
@@ -8,50 +9,80 @@ const anthropic = anthropicKey
   ? new Anthropic({ apiKey: anthropicKey }) 
   : null;
 
-// Initialize admin Supabase instance to fetch data
-const supabaseAdmin = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
-  ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
-  : null;
-
 export async function GET(request: Request) {
   try {
-    if (!supabaseAdmin) {
+    const supabase = await createClient();
+    if (!supabase) {
       return NextResponse.json({ error: 'Supabase não configurado.' }, { status: 400 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const sellerId = searchParams.get('seller_id');
-    const role = searchParams.get('role');
+    // Limitar requisições de insights de IA a 10 por minuto por IP (chamada Claude é cara)
+    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+    const limiter = rateLimit(ip, 10, 60 * 1000);
+    if (!limiter.success) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Muitas requisições. Aguarde um minuto.' }),
+        { 
+          status: 429, 
+          headers: { 
+            'Retry-After': Math.ceil((limiter.reset - Date.now()) / 1000).toString(),
+            'Content-Type': 'application/json'
+          } 
+        }
+      );
+    }
 
-    // Retrieve active session authorization header to verify caller identity
-    const authHeader = request.headers.get('Authorization') || '';
-    const token = authHeader.replace('Bearer ', '');
-    
-    // For MVP demonstration, we find active profile.
-    // In normal SSR next.js, we check cookie session.
-    // If authorization header token is missing, we check if we can resolve the user.
-    // Since this is a server component API route, we retrieve the user from auth.getUser.
-    // Let's get the user profile. (We assume mock data fallback if user profile is empty)
-    // To make it fully self-contained for local dev, if process.env keys are missing, we fallback.
+    // Obter o usuário autenticado a partir dos cookies de sessão
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autorizado. Faça login novamente.' }, { status: 401 });
+    }
 
-    // Let's fetch the list of sales & clients to send to Claude
-    const { data: clients } = await supabaseAdmin.from('clients').select('*');
-    const { data: sales } = await supabaseAdmin.from('sales').select('*');
+    // Obter perfil do usuário autenticado para obter organization_id e role de forma segura
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return NextResponse.json({ error: 'Perfil de usuário não encontrado.' }, { status: 404 });
+    }
+
+    const orgId = profile.organization_id;
+    const role = profile.role;
+    const sellerId = profile.id;
+
+    // Buscar clientes e vendas filtrados pela organização do usuário autenticado
+    const { data: clients, error: clientsError } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('organization_id', orgId);
+
+    const { data: sales, error: salesError } = await supabase
+      .from('sales')
+      .select('*')
+      .eq('organization_id', orgId);
+
+    if (clientsError || salesError) {
+      console.error('Erro ao buscar dados:', clientsError || salesError);
+      return NextResponse.json({ error: 'Erro ao buscar dados no banco.' }, { status: 500 });
+    }
 
     const clientsList = clients || [];
     let salesList = sales || [];
 
-    // Filter sales if current user is vendedor
-    if (role === 'vendedor' && sellerId) {
+    // Filtrar vendas se o usuário logado for vendedor
+    if (role === 'vendedor') {
       salesList = salesList.filter(s => s.seller_id === sellerId);
     }
 
-    // Helper: Compute dynamic metrics for the prompt
+    // Helper: Calcular métricas dinâmicas para o prompt
     const totalRevenue = salesList.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
     const fiadoSales = salesList.filter(s => s.payment_method === 'fiado' && s.status === 'pendente');
     const totalFiado = fiadoSales.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
 
-    // If Anthropic API key is not configured, we return rule-based insights based on real data
+    // Se o Anthropic API key não estiver configurado, retornamos insights baseados em regras
     if (!anthropic) {
       const fallbackInsights = [];
 
@@ -61,9 +92,8 @@ export async function GET(request: Request) {
           text: '✨ **Bem-vindo ao BoxHub!** Cadastre seus primeiros clientes e registre vendas para visualizar análises inteligentes aqui.'
         });
       } else {
-        // 1. Calculate highest fiado balance
+        // 1. Calcular maior saldo de fiado
         const clientBalances = clientsList.map(client => {
-          // Calculate total unpaid fiado for this client
           const clientSales = salesList.filter(s => s.client_id === client.id && !s.is_canceled);
           const fiadoTotal = clientSales
             .filter(s => s.payment_method === 'fiado' && s.status === 'pendente')
@@ -72,7 +102,7 @@ export async function GET(request: Request) {
           return { client, fiadoTotal, sales: clientSales };
         });
 
-        // Filter and sort by fiado balance
+        // Filtrar e ordenar pelo saldo do fiado
         const highestFiado = [...clientBalances]
           .filter(cb => cb.fiadoTotal > 0)
           .sort((a, b) => b.fiadoTotal - a.fiadoTotal)[0];
@@ -84,7 +114,7 @@ export async function GET(request: Request) {
           });
         }
 
-        // 2. Calculate inactivity (clients who haven't bought in a while)
+        // 2. Calcular inatividade (clientes que não compram há algum tempo)
         const now = new Date();
         const clientInactivity = clientBalances
           .map(cb => {
@@ -96,7 +126,7 @@ export async function GET(request: Request) {
           .filter(Boolean) as { client: any, days: number }[];
 
         const mostInactive = clientInactivity
-          .filter(ci => ci.days > 5) // more than 5 days inactive
+          .filter(ci => ci.days > 5) // mais de 5 dias inativo
           .sort((a, b) => b.days - a.days)[0];
 
         if (mostInactive) {
@@ -106,7 +136,7 @@ export async function GET(request: Request) {
           });
         }
 
-        // 3. Highlight top customer
+        // 3. Destacar melhor cliente
         const clientStats = clientBalances.map(cb => {
           const totalSpent = cb.sales.reduce((sum, s) => sum + Number(s.total_amount), 0);
           return { client: cb.client, totalSpent, count: cb.sales.length };
@@ -123,11 +153,11 @@ export async function GET(request: Request) {
           });
         }
 
-        // Fallback if we couldn't generate any of the above (e.g. they exist but no purchases yet)
+        // Fallback caso não tenhamos gerado nenhum dos acima
         if (fallbackInsights.length === 0) {
           fallbackInsights.push({
             type: 'success',
-            text: '✨ **Tudo em dia!** Seus clientes estão ativos e com contas em dia. Registre novas vendas para ver novos insights.'
+            text: '✨ **Tudo em dia!** Seus clientes estão ativos e com as contas em dia. Registre novas vendas para ver novos insights.'
           });
         }
       }
@@ -135,7 +165,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ insights: fallbackInsights.slice(0, 3) });
     }
 
-    // Serializing data as a small JSON payload for Claude
+    // Serialização dos dados como payload JSON pequeno para o Claude
     const dataPayload = {
       overview: {
         totalRevenue,
@@ -227,7 +257,6 @@ Não adicione qualquer explicação fora do bloco JSON. Retorne apenas o array J
     }
   } catch (err: any) {
     console.error('Erro ao gerar insights Claude:', err);
-    // Fallback rule insights
     const errorFallback = [
       {
         type: 'success',

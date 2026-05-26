@@ -129,7 +129,7 @@ export default function LoginPage() {
         mockDb.setCurrentUser(newUserId);
         
         await new Promise(r => setTimeout(r, 800));
-        router.push('/dashboard');
+        router.push('/onboarding');
       } else {
         // Sign up user via supabase
         const { data, error: authErr } = await supabase!.auth.signUp({
@@ -173,11 +173,12 @@ export default function LoginPage() {
             id: data.user.id,
             organization_id: orgId,
             name: name,
-            role: isSuperAdmin ? 'superadmin' : 'admin'
+            role: isSuperAdmin ? 'superadmin' : 'admin',
+            email: email
           });
         if (profErr) throw profErr;
 
-        router.push('/dashboard');
+        router.push('/onboarding');
       }
     } catch (err: any) {
       console.error('Erro no cadastro:', err);

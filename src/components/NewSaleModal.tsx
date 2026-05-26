@@ -187,13 +187,29 @@ export default function NewSaleModal({ onClose, onSaleCreated }: NewSaleModalPro
 
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedProductId || !price || !quantity) return;
+    if (!selectedProductId || !price || !quantity) {
+      setError('Por favor, preencha o produto, a quantidade e o preço.');
+      return;
+    }
 
     const product = products.find(p => p.id === selectedProductId);
     const variant = variants.find(v => v.id === selectedVariantId);
     
     const quantityNum = parseInt(quantity);
     const priceNum = parseFloat(price);
+
+    if (isNaN(quantityNum) || quantityNum <= 0) {
+      setError('A quantidade de caixas deve ser maior que zero.');
+      return;
+    }
+
+    if (isNaN(priceNum) || priceNum <= 0) {
+      setError('O preço por caixa deve ser maior que zero.');
+      return;
+    }
+
+    // Clear any active error
+    setError(null);
 
     const newItem: CartItem = {
       id: `${selectedProductId}-${selectedVariantId || 'no-var'}-${Date.now()}`,
@@ -242,7 +258,7 @@ export default function NewSaleModal({ onClose, onSaleCreated }: NewSaleModalPro
     if (paymentMethod === 'fiado' && selectedClient) {
       const remainingLimit = selectedClient.fiado_limit - clientFiadoBalance;
       if (totalAmount > remainingLimit) {
-        setError(`Atenção: Limite do fiado excedido! O limite disponível de ${selectedClient.name} é R$ ${remainingLimit.toFixed(2)} (Limite total: R$ ${selectedClient.fiado_limit.toFixed(2)}, Em aberto: R$ ${clientFiadoBalance.toFixed(2)}).`);
+        setError(`Atenção: Limite do fiado excedido! O limite disponível de ${selectedClient.name} é ${remainingLimit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (Limite total: ${selectedClient.fiado_limit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}, Em aberto: ${clientFiadoBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}).`);
         setLoading(false);
         return;
       }
@@ -593,8 +609,8 @@ export default function NewSaleModal({ onClose, onSaleCreated }: NewSaleModalPro
                         <td>{item.productName}</td>
                         <td>{item.variantName || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Nenhuma</span>}</td>
                         <td style={{ textAlign: 'center' }}>{item.quantity}</td>
-                        <td style={{ textAlign: 'right' }}>R$ {item.pricePerBox.toFixed(2)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 600 }}>R$ {item.totalPrice.toFixed(2)}</td>
+                        <td style={{ textAlign: 'right' }}>{item.pricePerBox.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{item.totalPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                         <td>
                           <button className={styles.removeBtn} onClick={() => handleRemoveItem(item.id)}>
                             <Trash2 size={15} />
@@ -643,14 +659,14 @@ export default function NewSaleModal({ onClose, onSaleCreated }: NewSaleModalPro
                 ) : selectedClient ? (
                   <div>
                     <strong>Fiado para {selectedClient.name}:</strong><br />
-                    • Limite Total da Ficha: R$ {selectedClient.fiado_limit.toFixed(2)}<br />
-                    • Débito em Aberto Atual: R$ {clientFiadoBalance.toFixed(2)}<br />
-                    • Limite Disponível Restante: R$ {(selectedClient.fiado_limit - clientFiadoBalance).toFixed(2)}<br />
+                    • Limite Total da Ficha: {selectedClient.fiado_limit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}<br />
+                    • Débito em Aberto Atual: {clientFiadoBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}<br />
+                    • Limite Disponível Restante: {(selectedClient.fiado_limit - clientFiadoBalance).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}<br />
                     {calculateTotal() > 0 && (
                       <span style={{ display: 'block', marginTop: '0.4rem', fontWeight: 600 }}>
                         {calculateTotal() > (selectedClient.fiado_limit - clientFiadoBalance) 
-                          ? `❌ Venda atual (R$ ${calculateTotal().toFixed(2)}) excede o saldo limite disponível!`
-                          : `✓ Saldo suficiente para a venda de R$ ${calculateTotal().toFixed(2)}.`
+                          ? `❌ Venda atual (${calculateTotal().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) excede o saldo limite disponível!`
+                          : `✓ Saldo suficiente para a venda de ${calculateTotal().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}.`
                         }
                       </span>
                     )}
@@ -665,7 +681,7 @@ export default function NewSaleModal({ onClose, onSaleCreated }: NewSaleModalPro
         <div className={styles.footer}>
           <div className={styles.totalContainer}>
             <span className={styles.totalLabel}>Total da Venda</span>
-            <span className={styles.totalVal}>R$ {calculateTotal().toFixed(2)}</span>
+            <span className={styles.totalVal}>{calculateTotal().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
           </div>
 
           <div className={styles.submitActions}>

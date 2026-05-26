@@ -206,7 +206,7 @@ export default function FiadoPage() {
         if (error) throw error;
       }
 
-      setSuccessMsg(`Recebimento de R$ ${amountNum.toFixed(2)} registrado com sucesso!`);
+      setSuccessMsg(`Recebimento de ${amountNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} registrado com sucesso!`);
       setAmortizeAmount('');
       
       // Delay closing modal so user sees success confirmation

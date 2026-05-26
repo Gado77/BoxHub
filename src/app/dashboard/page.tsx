@@ -225,7 +225,7 @@ export default function DashboardPage() {
       if (balance > 500) {
         insights.push({
           type: 'danger',
-          text: `💸 **${client.name}** está com R$ ${balance.toFixed(2)} em aberto no fiado. É o maior fiado da sua carteira.`
+          text: `💸 **${client.name}** está com ${balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em aberto no fiado. É o maior fiado da sua carteira.`
         });
       }
     });

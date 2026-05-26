@@ -61,7 +61,7 @@ export default function SaleDetailModal({ sale, onClose, onSaleUpdated }: SaleDe
         } else {
           const { data, error } = await supabase!
             .from('sale_items')
-            .select('*, products(name), variants(name)')
+            .select('*, products(name), product_variants(name)')
             .eq('sale_id', sale.id);
           
           if (error) throw error;
@@ -69,7 +69,7 @@ export default function SaleDetailModal({ sale, onClose, onSaleUpdated }: SaleDe
           const mappedItems = (data || []).map(item => ({
             ...item,
             product_name: item.products?.name || 'Produto Desconhecido',
-            variant_name: item.variants?.name || ''
+            variant_name: item.product_variants?.name || ''
           }));
           setItems(mappedItems);
         }

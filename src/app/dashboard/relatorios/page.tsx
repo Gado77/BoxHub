@@ -64,7 +64,7 @@ export default function RelatoriosPage() {
         const [clientsRes, profilesRes, salesRes] = await Promise.all([
           supabase!.from('clients').select('*'),
           supabase!.from('profiles').select('*'),
-          supabase!.from('sales').select('*, clients(name)').order('created_at', { ascending: false })
+          supabase!.from('sales').select('*, clients(name), profiles:seller_id(name, role, email, avatar_url)').order('created_at', { ascending: false })
         ]);
 
         clientsList = clientsRes.data || [];
@@ -331,7 +331,11 @@ export default function RelatoriosPage() {
       let sellerRole = 'admin';
       let sellerAvatar = null;
 
-      if (sellerId) {
+      if (s.profiles) {
+        sellerName = s.profiles.name;
+        sellerRole = s.profiles.role === 'admin' ? 'Administrador' : 'Vendedor';
+        sellerAvatar = s.profiles.avatar_url;
+      } else if (sellerId) {
         const p = profiles.find(prof => prof.id === sellerId);
         if (p) {
           sellerName = p.name;

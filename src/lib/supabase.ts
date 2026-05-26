@@ -1,4 +1,4 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -14,7 +14,7 @@ if (isMockMode) {
 }
 
 export const supabase = !isMockMode 
-  ? createSupabaseClient(supabaseUrl, supabaseAnonKey) 
+  ? createBrowserClient(supabaseUrl, supabaseAnonKey) 
   : null;
 
 interface OrgSettings {
@@ -23,6 +23,7 @@ interface OrgSettings {
   phone?: string;
   default_limit?: number;
   logo_url?: string;
+  segment?: string;
 }
 
 // BoxHub CRM branding — theme-aware logos (set your 3 links aqui)

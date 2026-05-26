@@ -560,7 +560,7 @@ export default function ClientesPage() {
                       </div>
 
                       {balance > 0 ? (
-                        <span className={styles.debtBadge}>R$ {balance.toFixed(0)}</span>
+                        <span className={styles.debtBadge}>{balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}</span>
                       ) : (
                         <span className={styles.noDebtBadge}>Em dia</span>
                       )}
@@ -660,7 +660,7 @@ export default function ClientesPage() {
                 <div className={styles.progressBarContainer}>
                   <div className={styles.progressBarLabelRow}>
                     <span>Crédito em uso: {limitPercent.toFixed(0)}%</span>
-                    <span>Limite Disponível: R$ {remainingLimit.toFixed(0)}</span>
+                    <span>Limite Disponível: {remainingLimit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}</span>
                   </div>
                   <div className={styles.progressBarTrack}>
                     <div 

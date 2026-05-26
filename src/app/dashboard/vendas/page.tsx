@@ -14,9 +14,11 @@ import {
   X,
   Filter,
   ArrowUpDown,
-  ArrowLeft
+  ArrowLeft,
+  Plus
 } from 'lucide-react';
 import SaleDetailModal from '@/components/SaleDetailModal';
+import NewSaleModal from '@/components/NewSaleModal';
 import styles from './vendas.module.css';
 
 export default function VendasHistoryPage() {
@@ -24,6 +26,7 @@ export default function VendasHistoryPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showNewSaleModal, setShowNewSaleModal] = useState(false);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -183,11 +186,21 @@ export default function VendasHistoryPage() {
   return (
     <div className={styles.container}>
       <div className={styles.headerRow}>
-        <Link href="/dashboard" className={styles.backLink}>
-          <ArrowLeft size={16} />
-          <span>Voltar ao Painel</span>
-        </Link>
-        <h1 className={styles.pageTitle}>Histórico de Vendas</h1>
+        <div className={styles.titleArea}>
+          <Link href="/dashboard" className={styles.backLink}>
+            <ArrowLeft size={16} />
+            <span>Voltar ao Painel</span>
+          </Link>
+          <h1 className={styles.pageTitle}>Histórico de Vendas</h1>
+        </div>
+        <button 
+          onClick={() => setShowNewSaleModal(true)} 
+          className="btn-primary"
+          style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', height: '36px', padding: '0 0.85rem', fontSize: '0.85rem' }}
+        >
+          <Plus size={16} />
+          <span>Nova Venda</span>
+        </button>
       </div>
 
       {/* Metrics overview for current selection */}
@@ -433,6 +446,17 @@ export default function VendasHistoryPage() {
           sale={selectedSale}
           onClose={() => setSelectedSale(null)}
           onSaleUpdated={loadData}
+        />
+      )}
+
+      {/* New Sale Modal */}
+      {showNewSaleModal && (
+        <NewSaleModal 
+          onClose={() => setShowNewSaleModal(false)}
+          onSaleCreated={() => {
+            setShowNewSaleModal(false);
+            loadData(); // reload list
+          }}
         />
       )}
     </div>
