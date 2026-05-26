@@ -131,7 +131,11 @@ export default function LoginPage() {
           }
         });
         if (authErr) throw authErr;
-        if (!data.user) throw new Error('Falha no cadastro.');
+        if (!data.user) {
+          throw new Error(
+            'A confirmação de e-mail está ativada no seu Supabase. Para que o cadastro de novos boxes funcione corretamente (criando a empresa e o perfil de administrador), você precisa DESATIVAR a confirmação de e-mail no painel do Supabase. Vá em: Authentication -> Providers -> Email -> e desative a opção "Confirm email".'
+          );
+        }
 
         // Generate organization ID client-side to bypass RLS select-during-insert catch-22
         const orgId = typeof window !== 'undefined' && window.crypto?.randomUUID 
