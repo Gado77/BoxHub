@@ -506,6 +506,111 @@
   background: rgba(239, 68, 68, 0.1);
 }
 
+.variantActions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.editVariantBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.editVariantBtn:hover {
+  color: var(--primary);
+  background: rgba(29, 158, 117, 0.1);
+}
+
+.editVariantInlineForm {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0.5rem;
+  box-sizing: border-box;
+}
+
+.editVariantInlineInputs {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.inputControlCompact {
+  height: 32px;
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0 0.5rem;
+  color: var(--text-main);
+  font-size: 0.8rem;
+  transition: all var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.inputControlCompact:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.editVariantInlineActions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.saveVariantBtn {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  border-radius: 4px;
+}
+
+.saveVariantBtn:hover {
+  background: rgba(29, 158, 117, 0.15);
+}
+
+.cancelVariantBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  border-radius: 4px;
+}
+
+.cancelVariantBtn:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+}
+
 .variantCardMeta {
   font-size: 0.75rem;
   color: var(--text-muted);

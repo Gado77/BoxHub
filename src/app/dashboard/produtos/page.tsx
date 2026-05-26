@@ -48,6 +48,7 @@ export default function ProdutosPage() {
   const [editDesc, setEditDesc] = useState('');
   const [editCategory, setEditCategory] = useState('');
   const [editType, setEditType] = useState<'fruta' | 'legume'>('fruta');
+  const [editStock, setEditStock] = useState('0');
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -55,6 +56,10 @@ export default function ProdutosPage() {
   const [variantStock, setVariantStock] = useState('50');
   const [variantLoading, setVariantLoading] = useState(false);
   const [variantSuccess, setVariantSuccess] = useState(false);
+
+  const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
+  const [editVariantName, setEditVariantName] = useState('');
+  const [editVariantStock, setEditVariantStock] = useState('0');
 
   const loadData = async () => {
     try {
@@ -176,6 +181,7 @@ export default function ProdutosPage() {
     setEditDesc(selectedProduct.description || '');
     setEditCategory(selectedProduct.category || '');
     setEditType(selectedProduct.type || 'fruta');
+    setEditStock(String(selectedProduct.stock_quantity || 0));
     setEditError(null);
     setShowEditModal(true);
   };
@@ -186,12 +192,14 @@ export default function ProdutosPage() {
     setEditLoading(true);
     setEditError(null);
     try {
+      const stockVal = estoqueAtivo && variants.length === 0 ? Number(editStock) : (selectedProduct?.stock_quantity || 0);
       if (isMockMode) {
         mockDb.products.update(selectedProductId, { 
           name: editName, 
           description: editDesc, 
           category: editCategory,
-          type: editType
+          type: editType,
+          stock_quantity: stockVal
         });
         setProducts(mockDb.products.list());
       } else {
@@ -201,7 +209,8 @@ export default function ProdutosPage() {
             name: editName,
             description: editDesc,
             category: editCategory,
-            type: editType
+            type: editType,
+            stock_quantity: stockVal
           })
           .eq('id', selectedProductId)
           .select()
@@ -313,6 +322,40 @@ export default function ProdutosPage() {
       console.error('Error creating variant:', err);
     } finally {
       setVariantLoading(false);
+    }
+  };
+
+  const startEditVariant = (variant: any) => {
+    setEditingVariantId(variant.id);
+    setEditVariantName(variant.name);
+    setEditVariantStock(String(variant.stock_quantity || 0));
+  };
+
+  const handleUpdateVariant = async (e: React.FormEvent, variantId: string) => {
+    e.preventDefault();
+    if (!editVariantName.trim()) return;
+    try {
+      if (isMockMode) {
+        mockDb.products.updateVariant(variantId, {
+          name: editVariantName.trim(),
+          stock_quantity: Number(editVariantStock)
+        });
+        setProducts(mockDb.products.list());
+      } else {
+        const { error } = await supabase!
+          .from('product_variants')
+          .update({
+            name: editVariantName.trim(),
+            stock_quantity: Number(editVariantStock)
+          })
+          .eq('id', variantId);
+        if (error) throw error;
+        const { data: updatedProducts } = await supabase!.from('products').select('*').order('name');
+        setProducts(updatedProducts || []);
+      }
+      setEditingVariantId(null);
+    } catch (err) {
+      console.error('Error updating variant:', err);
     }
   };
 
@@ -550,19 +593,69 @@ export default function ProdutosPage() {
                           dateStr = d.toLocaleDateString('pt-BR');
                         }
                       }
+
+                      if (editingVariantId === v.id) {
+                        return (
+                          <div key={v.id} className={styles.variantCard} style={{ padding: '0.6rem 0.8rem' }}>
+                            <form onSubmit={(e) => handleUpdateVariant(e, v.id)} className={styles.editVariantInlineForm}>
+                              <div className={styles.editVariantInlineInputs}>
+                                <input
+                                  type="text"
+                                  className={styles.inputControlCompact}
+                                  placeholder="Nome"
+                                  required
+                                  value={editVariantName}
+                                  onChange={(e) => setEditVariantName(e.target.value)}
+                                  style={{ flex: 1, minWidth: 0 }}
+                                />
+                                {estoqueAtivo && (
+                                  <input
+                                    type="number"
+                                    className={styles.inputControlCompact}
+                                    style={{ width: '80px' }}
+                                    placeholder="Estoque"
+                                    min="0"
+                                    required
+                                    value={editVariantStock}
+                                    onChange={(e) => setEditVariantStock(e.target.value)}
+                                  />
+                                )}
+                              </div>
+                              <div className={styles.editVariantInlineActions}>
+                                <button type="submit" className={styles.saveVariantBtn} title="Salvar">
+                                  <Save size={14} />
+                                </button>
+                                <button type="button" onClick={() => setEditingVariantId(null)} className={styles.cancelVariantBtn} title="Cancelar">
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            </form>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div key={v.id} className={styles.variantCard}>
                           <div className={styles.variantCardHeader}>
                             <span className={styles.variantCardName} title={variantNameDisplay}>
                               {variantNameDisplay}
                             </span>
-                            <button
-                              onClick={() => confirmDelete('variant', v.id)}
-                              className={styles.deleteVariantBtn}
-                              title="Excluir variante"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            <div className={styles.variantActions}>
+                              <button
+                                onClick={() => startEditVariant(v)}
+                                className={styles.editVariantBtn}
+                                title="Editar variante"
+                              >
+                                <Edit3 size={14} />
+                              </button>
+                              <button
+                                onClick={() => confirmDelete('variant', v.id)}
+                                className={styles.deleteVariantBtn}
+                                title="Excluir variante"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </div>
                           {estoqueAtivo && (
                             <div className={styles.variantCardMeta} suppressHydrationWarning>
@@ -766,6 +859,13 @@ export default function ProdutosPage() {
                 <input type="text" className="form-control"
                   value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
               </div>
+              {estoqueAtivo && variants.length === 0 && (
+                <div className="form-group">
+                  <label className="form-label">Estoque Atual (Caixas)</label>
+                  <input type="number" className="form-control" min="0" required
+                    value={editStock} onChange={(e) => setEditStock(e.target.value)} />
+                </div>
+              )}
               <div className={styles.modalActions}>
                 <button type="button" className="btn-secondary" style={{ height: '38px' }} onClick={() => setShowEditModal(false)}>
                   Cancelar
