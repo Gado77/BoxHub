@@ -6,7 +6,10 @@ O projeto encontra-se com o MVP **100% desenvolvido e compilando com sucesso** n
 
 ## Estado Atual do MVP
 - **Build de Produção:** Testado e aprovado com sucesso via `npm run build`.
-- **Funcionamento Local:** Totalmente funcional em modo Sandbox (Mock). Os dados salvos persistem no navegador (`localStorage`) para que você possa testar sem configurar nenhum servidor.
+- **Funcionamento Local:** Totalmente funcional em modo Sandbox (Mock) com persistência em `localStorage`.
+- **Central de SuperAdmin:** 100% concluída, integrada ao Supabase real com visualização global de empresas, faturamento acumulado, latência e uso de disco PostgreSQL.
+- **Segurança de Banco e RLS:** Políticas do Supabase atualizadas em `schema.sql` para liberar consultas globais do SuperAdmin sem expor o banco de dados.
+- **Correções de Login e Autenticação:** Tratamento de login rápido com role superadmin, badge de banco ativo, e correção de bug de sessão travada caso o perfil seja excluído no backend.
 
 ---
 
