@@ -148,6 +148,9 @@ export default function LoginPage() {
           .insert({ id: orgId, name: boxName });
         if (orgErr) throw orgErr;
 
+        // Determine role based on email context for testing/superadmin access
+        const isSuperAdmin = email.toLowerCase().includes('superadmin');
+
         // Then profile
         const { error: profErr } = await supabase!
           .from('profiles')
@@ -155,7 +158,7 @@ export default function LoginPage() {
             id: data.user.id,
             organization_id: orgId,
             name: name,
-            role: 'admin'
+            role: isSuperAdmin ? 'superadmin' : 'admin'
           });
         if (profErr) throw profErr;
 
@@ -201,9 +204,27 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="badge badge-danger" style={{ display: 'flex', gap: '0.5rem', width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1.25rem' }}>
-            <AlertCircle size={16} />
-            <span style={{ fontSize: '0.85rem' }}>{error}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', marginBottom: '1.25rem' }}>
+            <div className="badge badge-danger" style={{ display: 'flex', gap: '0.5rem', padding: '0.75rem', borderRadius: 'var(--radius-md)', width: '100%' }}>
+              <AlertCircle size={16} style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: '0.85rem' }}>{error}</span>
+            </div>
+            {!isMockMode && (
+              <div style={{ 
+                fontSize: '0.75rem', 
+                color: 'var(--text-muted)', 
+                background: 'rgba(255, 255, 255, 0.03)', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: '6px', 
+                padding: '0.6rem 0.8rem',
+                lineHeight: '1.4'
+              }}>
+                <strong>Dica do Desenvolvedor:</strong> O BoxHub está rodando com o banco de dados Supabase real. 
+                Os perfis do modo demonstração local (como <code>superadmin@boxhub.com.br</code>) não existem na base.
+                <br/><br/>
+                Para acessar como <strong>SuperAdmin</strong>, vá na aba <strong>Cadastrar Box</strong> e crie uma conta usando um e-mail que contenha <code>superadmin</code> (ex: <code>superadmin@boxhub.com.br</code>). O sistema a configurará automaticamente com a permissão correta.
+              </div>
+            )}
           </div>
         )}
 
@@ -338,6 +359,18 @@ export default function LoginPage() {
               {loading ? <span className="loading-spinner"></span> : 'Criar Conta e Iniciar'}
             </button>
           </form>
+        )}
+
+        {isMockMode ? (
+          <div className={styles.mockAlert}>
+            <Sprout size={14} />
+            <span>Modo de Demonstração (Local)</span>
+          </div>
+        ) : (
+          <div className={styles.mockAlert} style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6' }}>
+            <AlertCircle size={14} />
+            <span>Banco de Dados Real (Supabase) Ativo</span>
+          </div>
         )}
 
       </div>
