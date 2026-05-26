@@ -71,7 +71,8 @@ create table public.product_variants (
     product_id uuid not null references public.products(id) on delete cascade,
     name text not null,
     stock_quantity integer not null default 0,
-    created_at timestamptz not null default now()
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
 );
 
 -- Enable RLS on product_variants

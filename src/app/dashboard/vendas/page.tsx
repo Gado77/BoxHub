@@ -34,6 +34,13 @@ export default function VendasHistoryPage() {
   const [status, setStatus] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'val-desc' | 'val-asc'>('date-desc');
 
+  // Pagination State
+  const [visibleCount, setVisibleCount] = useState(15);
+
+  useEffect(() => {
+    setVisibleCount(15);
+  }, [searchTerm, paymentMethod, status, sortBy]);
+
   // Detail Modal State
   const [selectedSale, setSelectedSale] = useState<any | null>(null);
 
@@ -147,6 +154,10 @@ export default function VendasHistoryPage() {
 
     return result;
   }, [sales, clients, searchTerm, paymentMethod, status, sortBy]);
+
+  const slicedSales = useMemo(() => {
+    return filteredSales.slice(0, visibleCount);
+  }, [filteredSales, visibleCount]);
 
   // Compute Filtered metrics
   const metrics = useMemo(() => {
@@ -336,7 +347,7 @@ export default function VendasHistoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredSales.map((sale) => {
+                {slicedSales.map((sale) => {
                   const clientName = getClientName(sale);
                   return (
                     <tr 
@@ -389,7 +400,7 @@ export default function VendasHistoryPage() {
 
             {/* Mobile Cards List */}
             <div className={styles.salesMobileList}>
-              {filteredSales.map((sale) => {
+              {slicedSales.map((sale) => {
                 const clientName = getClientName(sale);
                 return (
                   <div 
@@ -436,6 +447,18 @@ export default function VendasHistoryPage() {
                 );
               })}
             </div>
+
+            {filteredSales.length > visibleCount && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem', marginBottom: '0.5rem' }}>
+                <button 
+                  onClick={() => setVisibleCount(prev => prev + 15)} 
+                  className="btn-secondary"
+                  style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.5rem 1.25rem' }}
+                >
+                  Carregar Mais Vendas
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

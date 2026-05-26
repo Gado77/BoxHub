@@ -36,6 +36,7 @@ Este documento registra cronologicamente todas as **28 fases de desenvolvimento*
 - [Fase 29 — Preparação de Produção, Formatação pt-BR e Onboarding Pós-Cadastro](#fase-29-preparacao-de-producao-formatacao-pt-br-e-onboarding-pos-cadastro)
 - [Fase 30 — Plano de Remediação de Produção - Fase 1: Segurança Completa](#fase-30-plano-de-remediacao-de-producao-fase-1-seguranca-completa)
 - [Fase 31 — Plano de Remediação de Produção - Fase 2: Modularização da Arquitetura](#fase-31-plano-de-remediacao-de-producao-fase-2-modularizacao-da-arquitetura)
+- [Fase 32 — Plano de Remediação de Produção - Fase 3: Alinhamento de Banco e Paginação](#fase-32-plano-de-remediacao-de-producao-fase-3-alinhamento-de-banco-e-paginacao)
 
 ---
 
@@ -189,5 +190,13 @@ Este documento registra cronologicamente todas as **28 fases de desenvolvimento*
         *   `useSales()`: Centraliza a listagem de vendas históricas por tenant com relacionamentos aninhados (`profiles`/`clients`).
         *   `useClients()`: Sincroniza e gerencia a listagem e filtros operacionais de clientes do Box.
     *   **Build de Produção Limpo:** O compilador Next.js gerou a build de produção sem nenhum erro de imports, tipos ou sintaxe.
+
+## Fase 32 — Plano de Remediação de Produção - Fase 3: Alinhamento de Banco e Paginação
+*   **Descrição:** Execução da Fase 3 (Banco e Dados) para corrigir discrepâncias de banco e resolver gargalos de desempenho na interface.
+*   **Implementação:**
+    *   **Correção de Esquema SQL:** Adicionada a coluna `updated_at timestamptz not null default now()` à tabela `public.product_variants` no script [schema.sql](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/supabase/schema.sql) para garantir o alinhamento total com as tipagens e interfaces TypeScript do app, evitando erros de gravação e inconsistência no banco de dados Supabase real em produção.
+    *   **Paginação Progressiva de Vendas:** Introduzimos paginação progressiva client-side (com botão "Carregar Mais Vendas") no histórico de transações ([vendas/page.tsx](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/dashboard/vendas/page.tsx)). As vendas são exibidas em lotes de 15, e o estado é resetado automaticamente ao aplicar novos filtros ou termos de pesquisa. Isso acelerou a renderização do DOM e preveniu travamentos do navegador ao carregar histórico volumoso.
+    *   **Build de Validação:** A compilação foi finalizada com sucesso, confirmando estabilidade operacional total.
+
 
 
