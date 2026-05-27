@@ -339,6 +339,7 @@ create table if not exists public.subscriptions (
     stripe_subscription_id text unique,
     stripe_price_id text,
     plan text not null check (plan in ('basic', 'pro', 'enterprise')),
+    billing_cycle text check (billing_cycle in ('monthly', 'annual')),
     status text not null,
     current_period_end timestamptz,
     cancel_at_period_end boolean not null default false,

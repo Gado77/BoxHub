@@ -364,7 +364,7 @@ export default function DashboardLayout({
                   style={{ fontWeight: '500', cursor: 'pointer' }}
                 >
                   {org?.subscription_status === 'active' 
-                    ? (org?.subscription_price_id === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO ? 'Assinante Pro' : 'Assinante Básico')
+                    ? (org?.subscription_price_id === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || org?.subscription_price_id === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_ANNUAL ? 'Assinante Pro' : 'Assinante Básico')
                     : org?.subscription_status === 'trial' 
                     ? 'Período de Testes' 
                     : 'Ajustar Faturamento'}

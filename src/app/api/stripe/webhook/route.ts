@@ -28,9 +28,9 @@ async function syncSubscription(stripeSubscriptionId: string) {
 
   // 1. Mapear o priceId obtido do Stripe para os planos do BoxHub
   let plan: 'basic' | 'pro' | 'enterprise' = 'basic';
-  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO) {
+  if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_ANNUAL) {
     plan = 'pro';
-  } else if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC) {
+  } else if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC || priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC_ANNUAL) {
     plan = 'basic';
   }
 
@@ -62,6 +62,23 @@ async function syncSubscription(stripeSubscriptionId: string) {
     return;
   }
 
+  // Evitar que eventos de cancelamento de assinaturas antigas substituam a assinatura ativa atual no DB
+  const { data: currentSub } = await supabaseAdmin
+    .from('subscriptions')
+    .select('stripe_subscription_id, status')
+    .eq('company_id', orgId)
+    .maybeSingle();
+
+  if (currentSub && currentSub.stripe_subscription_id && currentSub.stripe_subscription_id !== stripeSubscriptionId) {
+    if (['canceled', 'unpaid'].includes(subscription.status)) {
+      console.log(`[Webhook Stripe] Ignorando sincronização da assinatura antiga cancelada ${stripeSubscriptionId} pois a org já possui uma assinatura mais recente cadastrada (${currentSub.stripe_subscription_id})`);
+      return;
+    }
+  }
+
+  const price = subscription.items.data[0]?.price;
+  const billing_cycle = price?.recurring?.interval === 'year' ? 'annual' : 'monthly';
+
   // 3. Sincronizar na tabela subscriptions
   const subscriptionData = {
     company_id: orgId,
@@ -69,6 +86,7 @@ async function syncSubscription(stripeSubscriptionId: string) {
     stripe_subscription_id: stripeSubscriptionId,
     stripe_price_id: priceId,
     plan,
+    billing_cycle,
     status: subscription.status, // trialing, active, past_due, canceled, unpaid, incomplete
     current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
     cancel_at_period_end: subscription.cancel_at_period_end,
@@ -129,6 +147,39 @@ export async function POST(request: Request) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
+        const replaceSubscriptionId = session.metadata?.replaceSubscriptionId;
+        const refundOldSubscription = session.metadata?.refundOldSubscription;
+
+        if (replaceSubscriptionId) {
+          console.log(`[Webhook Stripe] Processando substituição de assinatura antiga: ${replaceSubscriptionId}`);
+          try {
+            const oldSub = await stripe.subscriptions.retrieve(replaceSubscriptionId);
+
+            // A. Cancelar a assinatura antiga imediatamente
+            await stripe.subscriptions.cancel(replaceSubscriptionId);
+            console.log(`[Webhook Stripe] Assinatura antiga ${replaceSubscriptionId} cancelada.`);
+
+            // B. Tentar reembolsar a última fatura da assinatura antiga se refundOldSubscription for 'true'
+            if (refundOldSubscription === 'true') {
+              try {
+                const latestInvoiceId = oldSub.latest_invoice as string;
+                if (latestInvoiceId) {
+                  const invoice = (await stripe.invoices.retrieve(latestInvoiceId)) as any;
+                  const chargeId = invoice.charge as string;
+                  if (chargeId) {
+                    await stripe.refunds.create({ charge: chargeId });
+                    console.log(`[Webhook Stripe] Reembolso do charge ${chargeId} emitido com sucesso.`);
+                  }
+                }
+              } catch (refundError: any) {
+                console.error('[Webhook Stripe] Falha ao reembolsar fatura anterior:', refundError.message);
+              }
+            }
+          } catch (cancelError: any) {
+            console.error('[Webhook Stripe] Falha ao cancelar/reembolsar assinatura antiga no Stripe:', cancelError.message);
+          }
+        }
+
         if (session.mode === 'subscription' && session.subscription) {
           await syncSubscription(session.subscription as string);
         }

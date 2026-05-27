@@ -53,6 +53,8 @@ export default function ConfiguracoesPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Selected Member for Edit/Delete
   const [selectedMember, setSelectedMember] = useState<Profile | null>(null);
@@ -404,6 +406,43 @@ export default function ConfiguracoesPage() {
   // Redireciona para o painel de planos
   const handleBillingAction = () => {
     router.push('/dashboard/planos');
+  };
+
+  const handleManageBilling = async () => {
+    try {
+      setActionLoading('portal');
+      setSaveError('');
+
+      if (isMockMode) {
+        await new Promise((r) => setTimeout(r, 600));
+        // Alternar trial/active no mock localmente
+        const isCurrentActive = subscription?.status === 'active';
+        mockDb.subscriptions.update({
+          status: isCurrentActive ? 'trialing' : 'active',
+        });
+        await loadConfigData();
+      } else {
+        const res = await fetch('/api/stripe/customer-portal', {
+          method: 'POST',
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Erro ao acessar o portal de faturamento.');
+        }
+
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error('Erro ao carregar o portal do faturamento.');
+        }
+      }
+    } catch (err: any) {
+      console.error('Erro ao acessar portal Stripe:', err);
+      setSaveError(err.message || 'Erro ao carregar configurações de pagamento.');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const getInitials = (name: string) => {
@@ -858,27 +897,36 @@ export default function ConfiguracoesPage() {
               ? (subscription.status === 'trialing' && trialDaysLeft > 0) 
               : (trialDaysLeft > 0);
             
-            const planName = subscription 
-              ? (subscription.plan === 'pro' ? 'Plano Pro' : subscription.plan === 'enterprise' ? 'Plano Enterprise' : 'Plano Básico') 
-              : (isTrialActive ? 'Plano Pro (Trial)' : 'Sem plano ativo');
+            const billingCycleText = subscription?.billing_cycle === 'annual' ? 'Anual' : 'Mensal';
             
-            const statusLabel = subscription?.status === 'active' 
-              ? 'Assinatura Ativa' 
+            const planName = subscription 
+              ? `${subscription.plan === 'pro' ? 'Plano Pro' : subscription.plan === 'enterprise' ? 'Plano Enterprise' : 'Plano Básico'} (${billingCycleText})` 
+              : (isTrialActive ? 'Plano Pro (Trial - Mensal)' : 'Sem plano ativo');
+            
+            const statusLabel = subscription 
+              ? (subscription.status === 'active' ? 'Assinatura Ativa' : subscription.status === 'trialing' ? 'Período de Testes' : `Assinatura ${subscription.status}`)
               : (isTrialActive ? 'Período de Testes' : 'Faturamento Pendente');
             
             const badgeClass = subscription?.status === 'active' 
               ? 'badge-success' 
               : (isTrialActive ? 'badge-warning' : 'badge-danger');
             
-            const priceVal = subscription 
-              ? (subscription.plan === 'pro' ? '297' : subscription.plan === 'basic' ? '147' : '0') 
-              : (isTrialActive ? '297' : '0');
+            let priceVal = '0';
+            if (subscription) {
+              if (subscription.plan === 'pro') {
+                priceVal = subscription.billing_cycle === 'annual' ? '247,50' : '297';
+              } else if (subscription.plan === 'basic') {
+                priceVal = subscription.billing_cycle === 'annual' ? '122,50' : '147';
+              }
+            } else if (isTrialActive) {
+              priceVal = '297';
+            }
             
             const descText = isTrialActive 
               ? `Você está testando os recursos do BoxHub gratuitamente no período de testes. Restam ${trialDaysLeft} dias de teste.` 
               : subscription?.status === 'active' 
               ? 'Sua conta está ativa e regularizada com faturamento via Stripe. Acesso total a recursos ilimitados.' 
-              : 'Sua assinatura está suspensa ou inativa. Regularize ou escolha um plano de faturamento.';
+              : `Sua assinatura está ${subscription?.status || 'inativa'}. Regularize ou escolha um plano de faturamento.`;
 
             return (
               <div id="subscription-plan" className={`${styles.card} glass`}>
@@ -908,13 +956,33 @@ export default function ConfiguracoesPage() {
                     <p className={styles.billingDescText}>{descText}</p>
                   </div>
 
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem', width: '100%' }}>
+                    {subscription && ['active', 'past_due', 'unpaid'].includes(subscription.status) && (
+                      <button 
+                        onClick={handleManageBilling} 
+                        className="btn-primary" 
+                        disabled={actionLoading !== null}
+                        style={{ width: '100%', fontSize: '0.85rem', justifyContent: 'center' }}
+                      >
+                        {actionLoading === 'portal' ? (
+                          <span className="loading-spinner"></span>
+                        ) : (
+                          <>
+                            <CreditCard size={14} />
+                            <span>Gerenciar Assinatura (Stripe)</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                    
                     <button 
                       onClick={handleBillingAction} 
-                      className="btn-primary" 
+                      className={subscription?.status === 'active' ? "btn-secondary" : "btn-primary"} 
                       style={{ width: '100%', fontSize: '0.85rem', justifyContent: 'center' }}
                     >
-                      Gerenciar Planos
+                      Ver Planos e Preços
                     </button>
+                  </div>
                 </div>
               </div>
             );
@@ -931,22 +999,46 @@ export default function ConfiguracoesPage() {
                 <p className={styles.cardSubtitle}>Gerencie os vendedores cadastrados no seu Box</p>
               </div>
               
-              {isUserAdmin && (
-                <button 
-                  onClick={() => {
-                    setMemberPassword('');
-                    setInvitedViaEmail(false);
-                    setModalError('');
-                    setIsAddModalOpen(true);
-                  }}
-                  className="btn-primary"
-                  style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', gap: '0.25rem' }}
-                >
-                  <Plus size={14} />
-                  <span>Novo Membro</span>
-                </button>
-              )}
+              {isUserAdmin && (() => {
+                const userLimit = subscription?.plan === 'basic' ? 2 : 999;
+                const hasReachedUserLimit = team.length >= userLimit;
+                return (
+                  <button 
+                    onClick={() => {
+                      if (hasReachedUserLimit) {
+                        setIsUpgradeModalOpen(true);
+                      } else {
+                        setMemberPassword('');
+                        setInvitedViaEmail(false);
+                        setModalError('');
+                        setIsAddModalOpen(true);
+                      }
+                    }}
+                    className="btn-primary"
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', gap: '0.25rem' }}
+                  >
+                    <Plus size={14} />
+                    <span>Novo Membro</span>
+                  </button>
+                );
+              })()}
             </div>
+
+            {(() => {
+              const userLimit = subscription?.plan === 'basic' ? 2 : 999;
+              const exceedsLimit = team.length > userLimit;
+              if (exceedsLimit) {
+                return (
+                  <div className={`${styles.alert} ${styles.alertWarning}`} style={{ margin: '1rem', padding: '0.75rem 1rem' }}>
+                    <AlertTriangle size={16} />
+                    <span>
+                      <strong>Limite de equipe excedido:</strong> Sua equipe tem {team.length} membros, mas seu plano Básico suporta apenas {userLimit}. Os vendedores adicionais continuarão operando normalmente, mas você não poderá adicionar novos membros. Faça upgrade para o Pro para regularizar.
+                    </span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             <div className={styles.teamList}>
               {team.map((member) => {
@@ -1280,6 +1372,67 @@ export default function ConfiguracoesPage() {
           </button>
           <button type="button" className="btn-danger" onClick={handleResetSimulator} disabled={modalLoading}>
             {modalLoading ? <span className="loading-spinner"></span> : 'Confirmar Reinicialização'}
+          </button>
+        </div>
+      </Modal>
+
+      {/* Modal: CONTEXTUAL UPGRADE */}
+      <Modal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        title="Seu time está crescendo! 🚀"
+      >
+        <div style={{ padding: '0.5rem 0' }}>
+          <p style={{ fontSize: '0.95rem', color: 'var(--text-main)', lineHeight: '1.6', marginBottom: '1.25rem' }}>
+            Faça upgrade para o <strong>Plano Pro</strong> e desbloqueie:
+          </p>
+          <ul style={{ 
+            listStyleType: 'none', 
+            padding: 0, 
+            margin: '0 0 1.5rem 0',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem'
+          }}>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}>
+              <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>✓</span>
+              <span><strong>Usuários ilimitados</strong> (atualmente limitado a 2)</span>
+            </li>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}>
+              <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>✓</span>
+              <span><strong>Múltiplos pipelines</strong> para organizar suas vendas</span>
+            </li>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}>
+              <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>✓</span>
+              <span><strong>Relatórios avançados</strong> e insights automáticos</span>
+            </li>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}>
+              <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>✓</span>
+              <span>Suporte prioritário e automações futuras</span>
+            </li>
+          </ul>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+            Transição rápida e segura pelo Stripe. Seus dados existentes estão 100% protegidos.
+          </p>
+        </div>
+
+        <div className={styles.modalFooter}>
+          <button 
+            type="button" 
+            className="btn-secondary" 
+            onClick={() => setIsUpgradeModalOpen(false)}
+          >
+            Voltar
+          </button>
+          <button 
+            type="button" 
+            className="btn-primary" 
+            onClick={() => {
+              setIsUpgradeModalOpen(false);
+              router.push('/dashboard/planos');
+            }}
+          >
+            Fazer Upgrade
           </button>
         </div>
       </Modal>

@@ -66,3 +66,18 @@ export function getOrgFeatures(subscription: Subscription | null): Features {
 
   return PLAN_FEATURES[subscription.plan] || PLAN_FEATURES.basic;
 }
+
+export function canAccessFeature(subscription: Subscription | null, featureKey: keyof Omit<Features, 'maxUsers' | 'maxPipelines'>): boolean {
+  const features = getOrgFeatures(subscription);
+  return !!features[featureKey];
+}
+
+export function getPlanLimits(planKey: 'basic' | 'pro' | 'enterprise'): Features {
+  return PLAN_FEATURES[planKey] || PLAN_FEATURES.basic;
+}
+
+export function hasReachedLimit(subscription: Subscription | null, currentCount: number, featureKey: 'maxUsers' | 'maxPipelines'): boolean {
+  const features = getOrgFeatures(subscription);
+  const limit = features[featureKey];
+  return currentCount >= limit;
+}

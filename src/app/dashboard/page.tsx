@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase, isMockMode, mockDb, mockStore } from '@/lib/supabase';
-import { Profile, Sale, Client } from '@/lib/types';
+import { Profile, Sale, Client, Subscription } from '@/lib/types';
 
 interface SaleWithClient extends Sale {
   clients: { name: string } | null;
@@ -23,7 +23,9 @@ import {
   ChevronRight, 
   RefreshCw,
   AlertTriangle,
-  AlertOctagon
+  AlertOctagon,
+  Clock,
+  Crown
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import styles from './page.module.css';
@@ -72,14 +74,17 @@ export default function DashboardPage() {
   // Sale detail selection state
   const [selectedSale, setSelectedSale] = useState<SaleWithClient | null>(null);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
 
   // Load dashboard data
   const loadDashboardData = async () => {
     try {
-      // 1. Get current user profile first
+      // 1. Get current user profile and subscription first
       let userProfile: Profile | null = null;
+      let userSub: Subscription | null = null;
       if (isMockMode) {
         userProfile = mockDb.getCurrentUser();
+        userSub = mockDb.subscriptions.get();
       } else {
         const { data: { session } } = await supabase!.auth.getSession();
         if (session) {
@@ -89,9 +94,19 @@ export default function DashboardPage() {
             .eq('id', session.user.id)
             .single();
           userProfile = profile;
+
+          if (profile) {
+            const { data: sub } = await supabase!
+              .from('subscriptions')
+              .select('*')
+              .eq('company_id', profile.organization_id)
+              .maybeSingle();
+            userSub = sub;
+          }
         }
       }
       setCurrentUser(userProfile);
+      setSubscription(userSub);
 
       // 2. Fetch lists based on mode
       let clientsList: any[] = [];
@@ -330,6 +345,35 @@ export default function DashboardPage() {
 
   return (
     <div className={styles.dashboardGrid}>
+      {/* Trial Banner */}
+      {subscription?.status === 'trialing' && (() => {
+        const now = new Date();
+        const trialEndsAt = subscription.trial_ends_at ? new Date(subscription.trial_ends_at) : null;
+        if (!trialEndsAt) return null;
+        const diffTime = trialEndsAt.getTime() - now.getTime();
+        const trialDaysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (trialDaysLeft < 0) return null;
+
+        return (
+          <div className={styles.trialBanner}>
+            <div className={styles.trialBannerContent}>
+              <div className={styles.trialBannerIcon}>
+                <Clock size={20} />
+              </div>
+              <div className={styles.trialBannerText}>
+                Você está no período de teste do <strong>Plano Pro</strong>. Restam <strong>{trialDaysLeft} {trialDaysLeft === 1 ? 'dia' : 'dias'}</strong> de trial gratuito!
+              </div>
+            </div>
+            <div className={styles.trialBannerAction}>
+              <Link href="/dashboard/planos" className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+                Assinar Agora
+              </Link>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* 1. Metrics Cards */}
       <div className={styles.metricsRow}>
         <div className={styles.metricCard}>

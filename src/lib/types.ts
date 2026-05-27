@@ -110,6 +110,7 @@ export interface Subscription {
   stripe_subscription_id: string | null;
   stripe_price_id: string | null;
   plan: 'basic' | 'pro' | 'enterprise';
+  billing_cycle: 'monthly' | 'annual' | null;
   status: string;
   current_period_end: string | null;
   cancel_at_period_end: boolean;

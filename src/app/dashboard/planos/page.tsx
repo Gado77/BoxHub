@@ -84,9 +84,28 @@ export default function PlanosPage() {
     }
   };
 
+  // Helper de Analytics (Mixpanel, GA4, PostHog, etc.)
+  const logAnalytics = (eventName: string, metadata: any = {}) => {
+    console.log(`[Analytics] Evento disparado: ${eventName}`, metadata);
+    // Em produção real: window.mixpanel.track(eventName, metadata)
+  };
+
   useEffect(() => {
     loadData();
+    logAnalytics('viewed_pricing_page', { billing_period: billingPeriod });
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get('success') === 'true') {
+      logAnalytics('completed_checkout');
+      setSuccess('Sua assinatura foi processada e ativada com sucesso!');
+    }
+  }, [searchParams]);
+
+  const handleToggleBillingPeriod = (period: 'monthly' | 'annual') => {
+    setBillingPeriod(period);
+    logAnalytics('viewed_pricing_page', { billing_period: period, current_plan: subscription?.plan });
+  };
 
   // Lógica para obter a quantidade de dias restantes de trial
   const getTrialDaysRemaining = () => {
@@ -122,11 +141,11 @@ export default function PlanosPage() {
     return 999;
   };
 
-  // Tratar gerenciamento pelo portal do Stripe
   const handleManageBilling = async () => {
     try {
       setActionLoading('portal');
       setError(null);
+      logAnalytics('clicked_manage_billing', { customer_id: subscription?.stripe_customer_id });
 
       if (isMockMode) {
         await new Promise((r) => setTimeout(r, 600));
@@ -163,13 +182,7 @@ export default function PlanosPage() {
 
   // Tratar ação de selecionar plano
   const handleSelectPlan = async (planKey: 'basic' | 'pro' | 'enterprise') => {
-    console.log('handleSelectPlan chamado:', { 
-      planKey, 
-      billingPeriod, 
-      isMock: isMockMode,
-      priceBasic: process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC,
-      pricePro: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO
-    });
+    logAnalytics('clicked_upgrade', { plan: planKey, billing_period: billingPeriod });
 
     if (planKey === 'enterprise') {
       const text = encodeURIComponent('Olá! Tenho interesse no Plano Enterprise do BoxHub para o meu Box.');
@@ -177,23 +190,16 @@ export default function PlanosPage() {
       return;
     }
 
-    if (billingPeriod === 'annual') {
-      // Como não há price_id anual no Stripe local configurado, contratamos faturamento anual direto via suporte
-      const text = encodeURIComponent(
-        `Olá! Quero assinar o Plano ${planKey === 'pro' ? 'Pro' : 'Básico'} Anual do BoxHub com 20% de desconto.`
-      );
-      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, '_blank');
-      return;
-    }
-
     const priceId = planKey === 'pro' 
-      ? process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO 
-      : process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC;
+      ? (billingPeriod === 'annual' ? process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_ANNUAL : process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO) 
+      : (billingPeriod === 'annual' ? process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC_ANNUAL : process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC);
 
     if (!priceId && !isMockMode) {
       setError('Configuração do Stripe ausente para este plano.');
       return;
     }
+
+    logAnalytics('started_checkout', { plan: planKey, billing_period: billingPeriod, price_id: priceId });
 
     try {
       setActionLoading(planKey);
@@ -202,14 +208,17 @@ export default function PlanosPage() {
       if (isMockMode) {
         // Simular atualização no banco local
         await new Promise((r) => setTimeout(r, 800));
+        const periodDays = billingPeriod === 'annual' ? 365 : 30;
         mockDb.subscriptions.update({
           plan: planKey,
           status: 'active',
-          stripe_price_id: priceId || `price_mock_${planKey}`,
+          stripe_price_id: priceId || `price_mock_${planKey}_${billingPeriod}`,
           trial_ends_at: null,
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          current_period_end: new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000).toISOString(),
+          billing_cycle: billingPeriod
         });
-        setSuccess(`Plano ${planKey === 'pro' ? 'Pro' : 'Básico'} ativado no ambiente sandbox!`);
+        logAnalytics('upgraded_plan', { plan: planKey, billing_period: billingPeriod });
+        setSuccess(`Plano ${planKey === 'pro' ? 'Pro' : 'Básico'} (${billingPeriod === 'annual' ? 'Anual' : 'Mensal'}) ativado no ambiente sandbox!`);
         await loadData();
       } else {
         // Fazer checkout real no Stripe
@@ -227,6 +236,7 @@ export default function PlanosPage() {
         if (data.url) {
           window.location.href = data.url;
         } else if (data.updated) {
+          logAnalytics('upgraded_plan', { plan: planKey, billing_period: billingPeriod });
           setSuccess(`Plano alterado com sucesso! Sincronizando...`);
           // Espera 2.5 segundos para dar tempo ao webhook de atualizar o banco de dados
           await new Promise((r) => setTimeout(r, 2500));
@@ -408,7 +418,7 @@ export default function PlanosPage() {
       <div className={styles.billingToggle}>
         <span 
           className={`${styles.toggleLabel} ${billingPeriod === 'monthly' ? styles.toggleLabelActive : ''}`}
-          onClick={() => setBillingPeriod('monthly')}
+          onClick={() => handleToggleBillingPeriod('monthly')}
         >
           Mensal
         </span>
@@ -416,15 +426,15 @@ export default function PlanosPage() {
           <input 
             type="checkbox" 
             checked={billingPeriod === 'annual'}
-            onChange={(e) => setBillingPeriod(e.target.checked ? 'annual' : 'monthly')}
+            onChange={(e) => handleToggleBillingPeriod(e.target.checked ? 'annual' : 'monthly')}
           />
           <span className={styles.slider}></span>
         </label>
         <span 
           className={`${styles.toggleLabel} ${billingPeriod === 'annual' ? styles.toggleLabelActive : ''}`}
-          onClick={() => setBillingPeriod('annual')}
+          onClick={() => handleToggleBillingPeriod('annual')}
         >
-          Anual <span className={styles.discountBadge}>-20%</span>
+          Anual <span className={styles.discountBadge}>Economize 2 meses</span>
         </span>
       </div>
 
@@ -442,15 +452,15 @@ export default function PlanosPage() {
           </div>
           <div className={styles.priceContainer}>
             <span className={styles.priceSymbol}>R$</span>
-            <span className={styles.priceValue}>{billingPeriod === 'monthly' ? '147' : '117'}</span>
+            <span className={styles.priceValue}>{billingPeriod === 'monthly' ? '147' : '122,50'}</span>
             <span className={styles.pricePeriod}>/mês</span>
           </div>
           {billingPeriod === 'annual' && (
             <div style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 600, marginTop: '-1.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
               <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400 }}>
-                Antes: R$ 1.764
+                Antes: R$ 1.764/ano
               </span>
-              <span>Cobrado anualmente (R$ 1.404)</span>
+              <span>Cobrado anualmente (R$ 1.470/ano)</span>
             </div>
           )}
 
@@ -520,15 +530,15 @@ export default function PlanosPage() {
           </div>
           <div className={styles.priceContainer}>
             <span className={styles.priceSymbol}>R$</span>
-            <span className={styles.priceValue}>{billingPeriod === 'monthly' ? '297' : '237'}</span>
+            <span className={styles.priceValue}>{billingPeriod === 'monthly' ? '297' : '247,50'}</span>
             <span className={styles.pricePeriod}>/mês</span>
           </div>
           {billingPeriod === 'annual' && (
             <div style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 600, marginTop: '-1.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
               <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400 }}>
-                Antes: R$ 3.564
+                Antes: R$ 3.564/ano
               </span>
-              <span>Cobrado anualmente (R$ 2.844)</span>
+              <span>Cobrado anualmente (R$ 2.970/ano)</span>
             </div>
           )}
 

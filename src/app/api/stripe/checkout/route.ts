@@ -15,6 +15,9 @@ const supabaseAdmin = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABA
   : null;
 
 export async function POST(request: Request) {
+  let replaceSubscriptionId = '';
+  let refundOldSubscription = '';
+
   try {
     if (!stripe) {
       return NextResponse.json(
@@ -126,38 +129,9 @@ export async function POST(request: Request) {
           const isWithin7Days = diffDays <= 7;
 
           if (isWithin7Days) {
-            console.log(`[Stripe Upgrade] Transição dentro do prazo de 7 dias. Executando reembolso e substituição.`);
-            // A. Tenta reembolsar a última fatura paga
-            try {
-              const latestInvoiceId = stripeSub.latest_invoice as string;
-              if (latestInvoiceId) {
-                const invoice = (await stripe.invoices.retrieve(latestInvoiceId)) as any;
-                const chargeId = invoice.charge as string;
-                if (chargeId) {
-                  await stripe.refunds.create({ charge: chargeId });
-                  console.log(`[Stripe Upgrade] Reembolso do charge ${chargeId} emitido com sucesso.`);
-                }
-              }
-            } catch (refundError: any) {
-              console.error('[Stripe Upgrade] Falha ao reembolsar fatura anterior:', refundError.message);
-            }
-
-            // B. Cancelar a assinatura atual imediatamente
-            await stripe.subscriptions.cancel(stripeSub.id);
-            console.log(`[Stripe Upgrade] Assinatura antiga ${stripeSub.id} cancelada.`);
-
-            // C. Limpar dados de assinatura antiga no banco de dados para evitar conflito
-            await supabaseAdmin
-              .from('subscriptions')
-              .update({
-                stripe_subscription_id: null,
-                stripe_price_id: null,
-                status: 'canceled'
-              })
-              .eq('company_id', orgId);
-
-            // D. Agora criamos um novo Checkout Session para o novo plano
-            // O fluxo continuará normalmente abaixo para gerar a URL de checkout
+            console.log(`[Stripe Upgrade] Transição dentro do prazo de 7 dias. Agendando reembolso e cancelamento pós-pagamento.`);
+            replaceSubscriptionId = stripeSub.id;
+            refundOldSubscription = 'true';
           } else {
             console.log(`[Stripe Upgrade] Transição após 7 dias. Executando atualização direta de assinatura.`);
             // Se passou de 7 dias, fazemos a mudança direta via assinatura com cobrança proporcional imediata
@@ -205,6 +179,15 @@ export async function POST(request: Request) {
         orgName,
       },
     };
+
+    if (replaceSubscriptionId) {
+      sessionOptions.metadata.replaceSubscriptionId = replaceSubscriptionId;
+      sessionOptions.subscription_data.metadata.replaceSubscriptionId = replaceSubscriptionId;
+    }
+    if (refundOldSubscription) {
+      sessionOptions.metadata.refundOldSubscription = refundOldSubscription;
+      sessionOptions.subscription_data.metadata.refundOldSubscription = refundOldSubscription;
+    }
 
     if (existingCustomerId) {
       sessionOptions.customer = existingCustomerId;
