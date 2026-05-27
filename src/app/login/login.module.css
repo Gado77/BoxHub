@@ -155,3 +155,29 @@
 .passwordToggle:hover {
   color: var(--primary);
 }
+
+.loginFooter {
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.footerLink {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.footerLink:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.footerDivider {
+  color: rgba(255, 255, 255, 0.1);
+}
+

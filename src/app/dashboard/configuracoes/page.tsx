@@ -27,6 +27,47 @@ import {
 } from 'lucide-react';
 import styles from './configuracoes.module.css';
 
+const formatAuditLog = (log: any) => {
+  const dateStr = new Date(log.created_at).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  let message = '';
+  const meta = log.metadata || {};
+
+  switch (log.action) {
+    case 'cancel_sale':
+      message = `Venda de R$ ${Number(meta.total_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} no ${String(meta.payment_method || 'fiado').toUpperCase()} foi cancelada.`;
+      break;
+    case 'create_fiado_payment':
+      message = `Pagamento de fiado de R$ ${Number(meta.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} no ${String(meta.payment_method || 'pix').toUpperCase()} registrado.`;
+      break;
+    case 'add_member':
+      message = `Membro "${meta.name}" convidado como ${meta.role === 'admin' ? 'Administrador' : 'Vendedor'}.`;
+      break;
+    case 'update_member':
+      message = `Membro "${meta.new_name}" alterado de ${meta.old_role === 'admin' ? 'Admin' : 'Vendedor'} para ${meta.new_role === 'admin' ? 'Admin' : 'Vendedor'}.`;
+      break;
+    case 'remove_member':
+      message = `Membro "${meta.name}" (${meta.role === 'admin' ? 'Admin' : 'Vendedor'}) removido da equipe.`;
+      break;
+    case 'update_organization':
+      message = `Dados do Box atualizados. Nome: "${meta.new_name}".`;
+      break;
+    case 'update_subscription':
+      message = `Assinatura de faturamento atualizada para Plano ${String(meta.new_plan || 'Pro').toUpperCase()} (${meta.new_billing_cycle === 'annual' ? 'Anual' : 'Mensal'}).`;
+      break;
+    default:
+      message = `${log.action} em ${log.entity}.`;
+  }
+
+  return { message, dateStr };
+};
+
 export default function ConfiguracoesPage() {
   const router = useRouter();
   const [org, setOrg] = useState<Organization | null>(null);
@@ -35,6 +76,7 @@ export default function ConfiguracoesPage() {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [estoqueAtivo, setEstoqueAtivo] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
 
   // Box Details Form State
   const [boxName, setBoxName] = useState('');
@@ -101,6 +143,10 @@ export default function ConfiguracoesPage() {
         setPhone(currentOrg.settings?.phone || '');
         setDefaultLimit(currentOrg.settings?.default_limit || 0);
         setLogoUrl(currentOrg.settings?.logo_url || '');
+        
+        if (user && user.role === 'admin') {
+          setAuditLogs(mockDb.auditLogs.list());
+        }
       } else {
         const { data: { session } } = await supabase!.auth.getSession();
         if (!session) return;
@@ -136,6 +182,15 @@ export default function ConfiguracoesPage() {
             .single();
 
           setSubscription(subData || null);
+
+          if (profile && profile.role === 'admin') {
+            const { data: logsData } = await supabase!
+              .from('audit_logs')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(20);
+            setAuditLogs(logsData || []);
+          }
         }
       }
     } catch (err) {
@@ -273,14 +328,7 @@ export default function ConfiguracoesPage() {
 
     try {
       if (isMockMode) {
-        const profiles = mockStore.getProfiles();
-        profiles.push({
-          id: `usr-${Date.now()}`,
-          organization_id: org.id,
-          name: newMemberName,
-          role: newMemberRole
-        });
-        mockStore.saveProfiles(profiles);
+        mockDb.profiles.insert(newMemberName, newMemberRole, newMemberEmail);
         await new Promise(r => setTimeout(r, 500));
         await loadConfigData();
       } else {
@@ -856,6 +904,37 @@ export default function ConfiguracoesPage() {
               </label>
             </div>
           </div>
+
+          {/* Card: Audit Logs (Admins only) */}
+          {isUserAdmin && (
+            <div className={`${styles.card} glass`}>
+              <div className={styles.cardHeader}>
+                <h3 className={styles.cardTitle}>
+                  <ShieldCheck className={styles.titleIcon} size={18} />
+                  <span>Histórico de Auditoria</span>
+                </h3>
+                <p className={styles.cardSubtitle}>Eventos e alterações de segurança recentes no Box</p>
+              </div>
+
+              <div className={styles.auditList}>
+                {auditLogs.length === 0 ? (
+                  <p className={styles.emptyAuditText}>Nenhum registro de auditoria disponível.</p>
+                ) : (
+                  auditLogs.map((log) => {
+                    const { message, dateStr } = formatAuditLog(log);
+                    return (
+                      <div key={log.id} className={styles.auditItem}>
+                        <div className={styles.auditMeta}>
+                          <span className={styles.auditDate}>{dateStr}</span>
+                        </div>
+                        <p className={styles.auditMsg}>{message}</p>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Card: Danger Zone (Mock Mode only) */}
           {isMockMode && isUserAdmin && (

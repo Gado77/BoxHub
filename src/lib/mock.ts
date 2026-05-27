@@ -404,6 +404,7 @@ const initialMockSaleItems: SaleItem[] = [
 ];
 
 const initialMockFiadoPayments: FiadoPayment[] = [];
+const initialMockAuditLogs: any[] = [];
 
 const getLocalData = <T>(key: string, defaultValue: T): T => {
   if (typeof window === 'undefined') return JSON.parse(JSON.stringify(defaultValue));
@@ -435,6 +436,7 @@ export const mockStore = {
   getSaleItems: () => getLocalData('sale_items', initialMockSaleItems),
   getFiadoPayments: () => getLocalData('fiado_payments', initialMockFiadoPayments),
   getSubscriptions: () => getLocalData('subscriptions', initialMockSubscriptions),
+  getAuditLogs: () => getLocalData('audit_logs', initialMockAuditLogs),
   
   saveClients: (clients: Client[]) => setLocalData('clients', clients),
   saveProducts: (products: Product[]) => setLocalData('products', products),
@@ -446,16 +448,45 @@ export const mockStore = {
   saveOrgs: (orgs: Organization[]) => setLocalData('orgs', orgs),
   saveProfiles: (profiles: Profile[]) => setLocalData('profiles', profiles),
   saveSubscriptions: (subscriptions: Subscription[]) => setLocalData('subscriptions', subscriptions),
+  saveAuditLogs: (logs: any[]) => setLocalData('audit_logs', logs),
 
   resetAll: () => {
     if (typeof window === 'undefined') return;
-    const keys = ['orgs', 'profiles', 'clients', 'products', 'variants', 'stock_movements', 'sales', 'sale_items', 'fiado_payments', 'subscriptions'];
+    const keys = ['orgs', 'profiles', 'clients', 'products', 'variants', 'stock_movements', 'sales', 'sale_items', 'fiado_payments', 'subscriptions', 'audit_logs'];
     keys.forEach(k => localStorage.removeItem(`boxhub_mock_${k}`));
+    localStorage.removeItem('boxhub_current_user_id');
     window.location.reload();
   }
 };
 
 export const mockDb = {
+  auditLogs: {
+    list: () => {
+      const all = mockStore.getAuditLogs();
+      const org = mockDb.getOrg();
+      return all.filter((l: any) => l.organization_id === org.id)
+                .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    },
+    insert: (action: string, entity: string, entityId: string | null, metadata: any) => {
+      const all = mockStore.getAuditLogs();
+      const org = mockDb.getOrg();
+      const user = mockDb.getCurrentUser();
+      const newLog = {
+        id: `audit-${Date.now()}`,
+        organization_id: org.id,
+        user_id: user ? user.id : null,
+        action,
+        entity,
+        entity_id: entityId,
+        metadata,
+        created_at: new Date().toISOString()
+      };
+      all.push(newLog);
+      mockStore.saveAuditLogs(all);
+      return newLog;
+    }
+  },
+
   getCurrentUser: () => {
     const profiles = mockStore.getProfiles();
     const currentUserId = typeof window !== 'undefined' 
@@ -507,6 +538,12 @@ export const mockDb = {
       const org = mockDb.getOrg();
       const idx = subs.findIndex(s => s.company_id === org.id);
       if (idx === -1) return null;
+      
+      const oldSub = subs[idx];
+      const oldPlan = oldSub.plan;
+      const oldStatus = oldSub.status;
+      const oldCycle = oldSub.billing_cycle;
+      
       subs[idx] = { ...subs[idx], ...fields, updated_at: new Date().toISOString() };
       mockStore.saveSubscriptions(subs);
       
@@ -516,6 +553,15 @@ export const mockDb = {
         orgs[oIdx].subscription_status = fields.status === 'active' ? 'active' : 'trial';
         mockStore.saveOrgs(orgs);
       }
+
+      mockDb.auditLogs.insert('update_subscription', 'subscriptions', subs[idx].id, {
+        old_plan: oldPlan,
+        new_plan: subs[idx].plan,
+        old_status: oldStatus,
+        new_status: subs[idx].status,
+        old_billing_cycle: oldCycle,
+        new_billing_cycle: subs[idx].billing_cycle
+      });
 
       return subs[idx];
     },
@@ -545,28 +591,59 @@ export const mockDb = {
   updateOrgSettings: (estoqueAtivo: boolean) => {
     const orgs = mockStore.getOrgs();
     const org = mockDb.getOrg();
+    const oldSettings = { ...org.settings };
+    
     org.settings.estoque_ativo = estoqueAtivo;
     const updated = orgs.map(o => o.id === org.id ? org : o);
     mockStore.saveOrgs(updated);
+    
+    mockDb.auditLogs.insert('update_organization', 'organizations', org.id, {
+      old_name: org.name,
+      new_name: org.name,
+      old_settings: oldSettings,
+      new_settings: org.settings
+    });
+    
     return org;
   },
 
   updateOrg: (name: string, settingsData: Partial<OrgSettings>) => {
     const orgs = mockStore.getOrgs();
     const org = mockDb.getOrg();
+    const oldName = org.name;
+    const oldSettings = { ...org.settings };
+    
     org.name = name;
     org.settings = { ...org.settings, ...settingsData };
     const updated = orgs.map(o => o.id === org.id ? org : o);
     mockStore.saveOrgs(updated);
+    
+    mockDb.auditLogs.insert('update_organization', 'organizations', org.id, {
+      old_name: oldName,
+      new_name: name,
+      old_settings: oldSettings,
+      new_settings: org.settings
+    });
+    
     return org;
   },
 
   updateOrgLogo: (logoUrl: string) => {
     const orgs = mockStore.getOrgs();
     const org = mockDb.getOrg();
+    const oldSettings = { ...org.settings };
+    
     org.settings = { ...org.settings, logo_url: logoUrl };
     const updated = orgs.map(o => o.id === org.id ? org : o);
     mockStore.saveOrgs(updated);
+    
+    mockDb.auditLogs.insert('update_organization', 'organizations', org.id, {
+      old_name: org.name,
+      new_name: org.name,
+      old_settings: oldSettings,
+      new_settings: org.settings
+    });
+    
     return org;
   },
 
@@ -576,18 +653,61 @@ export const mockDb = {
       const org = mockDb.getOrg();
       return all.filter(p => p.organization_id === org.id);
     },
+    insert: (name: string, role: 'admin' | 'vendedor' | 'superadmin', email: string) => {
+      const all = mockStore.getProfiles();
+      const org = mockDb.getOrg();
+      const newProfile = {
+        id: `usr-${Date.now()}`,
+        organization_id: org.id,
+        name,
+        role,
+        email,
+        avatar_url: null
+      };
+      all.push(newProfile);
+      mockStore.saveProfiles(all);
+
+      mockDb.auditLogs.insert('add_member', 'profiles', newProfile.id, {
+        name,
+        role,
+        email
+      });
+      return newProfile;
+    },
     update: (profileId: string, name: string, role: 'admin' | 'vendedor' | 'superadmin') => {
       const all = mockStore.getProfiles();
       const idx = all.findIndex(p => p.id === profileId);
       if (idx === -1) return null;
+      
+      const old = all[idx];
+      const oldName = old.name;
+      const oldRole = old.role;
+      
       all[idx] = { ...all[idx], name, role };
       mockStore.saveProfiles(all);
+
+      mockDb.auditLogs.insert('update_member', 'profiles', profileId, {
+        old_name: oldName,
+        new_name: name,
+        old_role: oldRole,
+        new_role: role
+      });
+
       return all[idx];
     },
     remove: (profileId: string) => {
       const all = mockStore.getProfiles();
+      const member = all.find(p => p.id === profileId);
       const filtered = all.filter(p => p.id !== profileId);
       mockStore.saveProfiles(filtered);
+      
+      if (member) {
+        mockDb.auditLogs.insert('remove_member', 'profiles', profileId, {
+          name: member.name,
+          role: member.role,
+          email: member.email || ''
+        });
+      }
     }
   },
 
@@ -899,6 +1019,12 @@ export const mockDb = {
         mockStore.saveVariants(variants);
       }
 
+      mockDb.auditLogs.insert('cancel_sale', 'sales', saleId, {
+        total_amount: sales[idx].total_amount,
+        client_id: sales[idx].client_id,
+        payment_method: sales[idx].payment_method
+      });
+
       return sales[idx];
     }
   },
@@ -951,6 +1077,13 @@ export const mockDb = {
       }
       
       mockStore.saveSales(sales);
+
+      mockDb.auditLogs.insert('create_fiado_payment', 'fiado_payments', newPayment.id, {
+        amount,
+        client_id: clientId,
+        payment_method: paymentMethod
+      });
+
       return newPayment;
     }
   }

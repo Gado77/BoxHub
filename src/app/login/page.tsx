@@ -393,6 +393,12 @@ export default function LoginPage() {
           </div>
         )}
 
+        <div className={styles.loginFooter}>
+          <a href="/termos" className={styles.footerLink}>Termos de Uso</a>
+          <span className={styles.footerDivider}>•</span>
+          <a href="/privacidade" className={styles.footerLink}>Política de Privacidade & LGPD</a>
+        </div>
+
       </div>
     </div>
   );

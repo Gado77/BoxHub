@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
     // Limitar requisições de insights de IA a 10 por minuto por IP (chamada Claude é cara)
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
-    const limiter = rateLimit(ip, 10, 60 * 1000);
+    const limiter = await rateLimit(ip, 10, 60 * 1000);
     if (!limiter.success) {
       return new NextResponse(
         JSON.stringify({ error: 'Muitas requisições. Aguarde um minuto.' }),

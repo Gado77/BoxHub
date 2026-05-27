@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase-server';
 import { rateLimit } from '@/lib/rate-limit';
+import { checkoutSchema } from '@/lib/schemas';
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
 
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
 
     // Limitar a 10 tentativas de checkout por hora por IP para mitigar spam de sessões
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
-    const limiter = rateLimit(ip, 10, 60 * 60 * 1000);
+    const limiter = await rateLimit(ip, 10, 60 * 60 * 1000);
     if (!limiter.success) {
       return new NextResponse(
         JSON.stringify({ error: 'Muitas tentativas de checkout. Tente novamente mais tarde.' }),
@@ -64,11 +65,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Perfil de usuário não encontrado.' }, { status: 404 });
     }
 
-    const { priceId } = await request.json();
-
-    if (!priceId) {
-      return NextResponse.json({ error: 'Falta o campo priceId.' }, { status: 400 });
+    const body = await request.json();
+    const validation = checkoutSchema.safeParse(body);
+    
+    if (!validation.success) {
+      const errorMsg = validation.error.issues.map(e => e.message).join(' ');
+      return NextResponse.json({ error: errorMsg }, { status: 400 });
     }
+    
+    const { priceId } = validation.data;
 
     // Buscar o nome real da organização para colocar nas metadados da sessão
     const { data: org } = await supabase

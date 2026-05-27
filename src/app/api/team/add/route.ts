@@ -3,6 +3,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase-server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getOrgFeatures } from '@/lib/features';
+import { teamInviteSchema } from '@/lib/schemas';
 
 
 // Inicializar Supabase Admin usando a chave de serviço secreta para criar o usuário e perfil
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
 
     // Limitar criação de membros a 20 convites por hora por IP para evitar spam
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
-    const limiter = rateLimit(ip, 20, 60 * 60 * 1000);
+    const limiter = await rateLimit(ip, 20, 60 * 60 * 1000);
     if (!limiter.success) {
       return new NextResponse(
         JSON.stringify({ error: 'Limite de convites excedido. Tente novamente mais tarde.' }),
@@ -60,17 +61,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Perfil do administrador não encontrado.' }, { status: 404 });
     }
 
-    // Obter dados da requisição
-    const { email, name, role, organization_id } = await request.json();
-
-    if (!email || !name || !role || !organization_id) {
-      return NextResponse.json({ error: 'Dados incompletos para criação de membro.' }, { status: 400 });
+    // Obter dados da requisição e validar com Zod
+    const body = await request.json();
+    const validation = teamInviteSchema.safeParse(body);
+    
+    if (!validation.success) {
+      const errorMsg = validation.error.issues.map(e => e.message).join(' ');
+      return NextResponse.json({ error: errorMsg }, { status: 400 });
     }
-
-    // 3. Validar se o cargo a ser adicionado é válido
-    if (role !== 'admin' && role !== 'vendedor' && role !== 'superadmin') {
-      return NextResponse.json({ error: 'Função de membro inválida.' }, { status: 400 });
-    }
+    
+    const { email, name, role, organization_id } = validation.data;
 
     // 4. Validar se o chamador pertence à mesma organização do novo membro
     const isCallerSuperAdmin = callerProfile.role === 'superadmin';
