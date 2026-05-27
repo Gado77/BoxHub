@@ -446,8 +446,11 @@ export default function PlanosPage() {
             <span className={styles.pricePeriod}>/mês</span>
           </div>
           {billingPeriod === 'annual' && (
-            <div style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 600, marginTop: '-1.5rem', marginBottom: '1.5rem' }}>
-              Cobrado anualmente (R$ 1.404)
+            <div style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 600, marginTop: '-1.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+              <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400 }}>
+                Antes: R$ 1.764
+              </span>
+              <span>Cobrado anualmente (R$ 1.404)</span>
             </div>
           )}
 
@@ -521,8 +524,11 @@ export default function PlanosPage() {
             <span className={styles.pricePeriod}>/mês</span>
           </div>
           {billingPeriod === 'annual' && (
-            <div style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 600, marginTop: '-1.5rem', marginBottom: '1.5rem' }}>
-              Cobrado anualmente (R$ 2.844)
+            <div style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: 600, marginTop: '-1.5rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+              <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400 }}>
+                Antes: R$ 3.564
+              </span>
+              <span>Cobrado anualmente (R$ 2.844)</span>
             </div>
           )}
 
