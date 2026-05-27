@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, isMockMode, mockDb, mockStore, CRM_BRANDING } from '@/lib/supabase';
-import { Lock, Mail, User, Building, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, User, Building, AlertCircle, Eye, EyeOff, Check } from 'lucide-react';
 import styles from './login.module.css';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'recovery'>('login');
   
   // Form fields
   const [email, setEmail] = useState('');
@@ -16,9 +16,10 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [boxName, setBoxName] = useState('');
   
-  // Loading & error states
+  // Loading, error & success states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Password visibility states
   const [showPassword, setShowPassword] = useState(false);
@@ -44,9 +45,25 @@ export default function LoginPage() {
           router.push('/dashboard');
         }
       } else {
+        // Detect recovery/invite type directly from URL hash/query on mount
+        let isRecovery = false;
+        let isInvite = false;
+        if (typeof window !== 'undefined') {
+          const hash = window.location.hash;
+          const search = window.location.search;
+          isRecovery = hash.includes('type=recovery') || search.includes('type=recovery');
+          isInvite = hash.includes('type=invite') || search.includes('type=invite') || hash.includes('type=signup') || search.includes('type=signup');
+        }
+
         const { data } = await supabase!.auth.getSession();
         if (data.session) {
-          router.push('/dashboard');
+          if (isRecovery) {
+            router.push('/reset-password');
+          } else if (isInvite) {
+            router.push('/welcome');
+          } else {
+            router.push('/dashboard');
+          }
         }
       }
     };
@@ -188,6 +205,30 @@ export default function LoginPage() {
     }
   };
 
+  const handleRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+
+    try {
+      if (isMockMode) {
+        await new Promise(r => setTimeout(r, 600));
+        setSuccessMsg('Modo de simulação: E-mail de redefinição enviado com sucesso!');
+      } else {
+        const { error: recoveryErr } = await supabase!.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (recoveryErr) throw recoveryErr;
+        setSuccessMsg('E-mail de redefinição enviado! Verifique sua caixa de entrada.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao enviar e-mail de recuperação. Verifique o endereço digitado.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={styles.wrapper}>
       <div className={`${styles.container} glass animate-fade-in`}>
@@ -202,22 +243,24 @@ export default function LoginPage() {
           <p className={styles.tagline}>Gestão que colhe resultados.</p>
         </div>
 
-        <div className={styles.tabs}>
-          <button 
-            type="button"
-            className={`${styles.tab} ${activeTab === 'login' ? styles.activeTab : ''}`}
-            onClick={() => { setActiveTab('login'); setError(null); setShowPassword(false); setShowRegPassword(false); }}
-          >
-            Entrar
-          </button>
-          <button 
-            type="button"
-            className={`${styles.tab} ${activeTab === 'register' ? styles.activeTab : ''}`}
-            onClick={() => { setActiveTab('register'); setError(null); setShowPassword(false); setShowRegPassword(false); }}
-          >
-            Cadastrar Box
-          </button>
-        </div>
+        {activeTab !== 'recovery' && (
+          <div className={styles.tabs}>
+            <button 
+              type="button"
+              className={`${styles.tab} ${activeTab === 'login' ? styles.activeTab : ''}`}
+              onClick={() => { setActiveTab('login'); setError(null); setSuccessMsg(null); setShowPassword(false); setShowRegPassword(false); }}
+            >
+              Entrar
+            </button>
+            <button 
+              type="button"
+              className={`${styles.tab} ${activeTab === 'register' ? styles.activeTab : ''}`}
+              onClick={() => { setActiveTab('register'); setError(null); setSuccessMsg(null); setShowPassword(false); setShowRegPassword(false); }}
+            >
+              Cadastrar Box
+            </button>
+          </div>
+        )}
 
         {error && (
           <div className="badge badge-danger" style={{ display: 'flex', gap: '0.5rem', width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1.25rem' }}>
@@ -226,7 +269,14 @@ export default function LoginPage() {
           </div>
         )}
 
-        {activeTab === 'login' ? (
+        {successMsg && (
+          <div className="badge badge-success" style={{ display: 'flex', gap: '0.5rem', width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1.25rem', background: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.2)', color: '#34d399' }}>
+            <Check size={16} style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: '0.85rem' }}>{successMsg}</span>
+          </div>
+        )}
+
+        {activeTab === 'login' && (
           <form onSubmit={handleLogin}>
             <div className="form-group">
               <label className="form-label" htmlFor="email">E-mail</label>
@@ -268,13 +318,31 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              <div style={{ textAlign: 'right', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('recovery'); setError(null); setSuccessMsg(null); }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
             </div>
 
             <button type="submit" className={`btn-primary ${styles.submitBtn}`} disabled={loading}>
               {loading ? <span className="loading-spinner"></span> : 'Acessar Conta'}
             </button>
           </form>
-        ) : (
+        )}
+
+        {activeTab === 'register' && (
           <form onSubmit={handleRegister}>
             <div className="form-group">
               <label className="form-label" htmlFor="boxName">Nome do Box/Firma</label>
@@ -356,6 +424,52 @@ export default function LoginPage() {
             <button type="submit" className={`btn-primary ${styles.submitBtn}`} disabled={loading}>
               {loading ? <span className="loading-spinner"></span> : 'Criar Conta e Iniciar'}
             </button>
+          </form>
+        )}
+
+        {activeTab === 'recovery' && (
+          <form onSubmit={handleRecovery}>
+            <p className={styles.tagline} style={{ marginBottom: '1.25rem', textAlign: 'center' }}>
+              Digite seu e-mail abaixo. Enviaremos um link para você redefinir sua senha.
+            </p>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="recovery-email">E-mail</label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  id="recovery-email"
+                  type="email" 
+                  className="form-control" 
+                  placeholder="seuemail@exemplo.com"
+                  style={{ paddingLeft: '40px' }}
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <button type="submit" className={`btn-primary ${styles.submitBtn}`} disabled={loading}>
+              {loading ? <span className="loading-spinner"></span> : 'Enviar Link de Recuperação'}
+            </button>
+
+            <div style={{ textAlign: 'center', marginTop: '1.25rem' }}>
+              <button 
+                type="button" 
+                onClick={() => { setActiveTab('login'); setError(null); setSuccessMsg(null); }}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: 'var(--primary)', 
+                  fontWeight: '600', 
+                  cursor: 'pointer',
+                  fontSize: '0.875rem'
+                }}
+              >
+                Voltar para o Login
+              </button>
+            </div>
           </form>
         )}
 

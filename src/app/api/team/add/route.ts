@@ -125,7 +125,7 @@ export async function POST(request: Request) {
 
 
     const requestUrl = new URL(request.url);
-    const origin = requestUrl.origin;
+    const origin = process.env.NEXT_PUBLIC_APP_URL || requestUrl.origin;
 
     // Criar o usuário no Supabase Auth por meio do convite
     const { data: authData, error: authErrorInvite } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
