@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, isMockMode, mockDb, mockStore, CRM_BRANDING } from '@/lib/supabase';
-import { Sprout, Lock, Mail, User, Building, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, User, Building, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import styles from './login.module.css';
 
 export default function LoginPage() {
@@ -381,17 +381,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        {isMockMode ? (
-          <div className={styles.mockAlert}>
-            <Sprout size={14} />
-            <span>Modo de Demonstração (Local)</span>
-          </div>
-        ) : (
-          <div className={styles.mockAlert} style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6' }}>
-            <AlertCircle size={14} />
-            <span>Banco de Dados Real (Supabase) Ativo</span>
-          </div>
-        )}
+
 
         <div className={styles.loginFooter}>
           <a href="/termos" className={styles.footerLink}>Termos de Uso</a>
