@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
 };
 
 export default withSentryConfig(nextConfig, {
-  org: "boxhub",
+  org: "boxhub-ceasa",
   project: "javascript-nextjs",
   silent: !process.env.CI,
   widenClientFileUpload: true,
