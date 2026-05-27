@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase, isMockMode, mockDb, CRM_BRANDING } from '@/lib/supabase';
 import { Profile, Organization } from '@/lib/types';
+import { initOfflineSync } from '@/lib/offline-queue';
 import { 
   LayoutDashboard, 
   Users, 
@@ -42,6 +43,14 @@ export default function DashboardLayout({
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Ativa a sincronização offline em produção
+  useEffect(() => {
+    if (!isMockMode && supabase) {
+      const cleanup = initOfflineSync(supabase);
+      return cleanup;
+    }
+  }, []);
 
   useEffect(() => {
     const checkAuthAndLoadData = async () => {

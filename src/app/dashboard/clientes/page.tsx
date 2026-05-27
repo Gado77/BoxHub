@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase, isMockMode, mockDb, mockStore } from '@/lib/supabase';
+import { queueOfflineMutation } from '@/lib/offline-queue';
 import { 
   Users, 
   ChevronLeft,
@@ -183,19 +184,54 @@ export default function ClientesPage() {
       } else {
         const orgId = (await supabase!.from('profiles').select('organization_id').eq('id', (await supabase!.auth.getUser()).data.user?.id).single()).data?.organization_id;
 
-        const { data, error } = await supabase!
-          .from('clients')
-          .insert({
-            organization_id: orgId,
-            name: newClientName,
-            type: newClientType,
-            contact: newClientContact,
-            fiado_limit: Number(newClientLimit)
-          })
-          .select()
-          .single();
+        let data: any = null;
+        let error: any = null;
+        try {
+          const res = await supabase!
+            .from('clients')
+            .insert({
+              organization_id: orgId,
+              name: newClientName,
+              type: newClientType,
+              contact: newClientContact,
+              fiado_limit: Number(newClientLimit)
+            })
+            .select()
+            .single();
+          data = res.data;
+          error = res.error;
+        } catch (e: any) {
+          error = e;
+        }
 
-        if (error) throw error;
+        if (error) {
+          if (!navigator.onLine || error.message === 'Failed to fetch' || error.status === 0) {
+            const offlineClientId = `cli_offline_${Date.now()}`;
+            const offlineClientData = {
+              id: offlineClientId,
+              organization_id: orgId,
+              name: newClientName,
+              type: newClientType,
+              contact: newClientContact,
+              fiado_limit: Number(newClientLimit),
+              created_at: new Date().toISOString()
+            };
+            
+            queueOfflineMutation('clients', 'insert', offlineClientData);
+            
+            setClients(prev => [...prev, offlineClientData].sort((a, b) => a.name.localeCompare(b.name)));
+            setSelectedClientId(offlineClientId);
+            
+            alert('⚠️ Conectividade instável! Cliente registrado localmente no navegador (offline). A ficha dele será sincronizada automaticamente assim que a internet retornar.');
+            
+            setNewClientName('');
+            setNewClientContact('');
+            setNewClientLimit('1500');
+            setShowNewModal(false);
+            return;
+          }
+          throw error;
+        }
         
         setClients(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
         setSelectedClientId(data.id);
@@ -299,16 +335,40 @@ export default function ClientesPage() {
       } else {
         const orgId = (await supabase!.from('profiles').select('organization_id').eq('id', (await supabase!.auth.getUser()).data.user?.id).single()).data?.organization_id;
 
-        const { error } = await supabase!
-          .from('fiado_payments')
-          .insert({
-            organization_id: orgId,
-            client_id: selectedClientId,
-            amount: amountNum,
-            payment_method: amortizeMethod
-          });
+        let error: any = null;
+        try {
+          const res = await supabase!
+            .from('fiado_payments')
+            .insert({
+              organization_id: orgId,
+              client_id: selectedClientId,
+              amount: amountNum,
+              payment_method: amortizeMethod
+            });
+          error = res.error;
+        } catch (e: any) {
+          error = e;
+        }
 
-        if (error) throw error;
+        if (error) {
+          if (!navigator.onLine || error.message === 'Failed to fetch' || error.status === 0) {
+            const offlinePaymentId = `pay_offline_${Date.now()}`;
+            queueOfflineMutation('fiado_payments', 'insert', {
+              id: offlinePaymentId,
+              organization_id: orgId,
+              client_id: selectedClientId,
+              amount: amountNum,
+              payment_method: amortizeMethod,
+              created_at: new Date().toISOString()
+            });
+
+            alert('⚠️ Conectividade instável! Pagamento registrado localmente no navegador (offline). O saldo do cliente foi atualizado e será sincronizado assim que a internet retornar.');
+            setAmortizeSuccess(true);
+            setAmortizeLoading(false);
+            return;
+          }
+          throw error;
+        }
       }
       
       // Reload lists and details in background to sync with real values

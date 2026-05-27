@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, isMockMode, mockDb } from '@/lib/supabase';
 import { X, Plus, Trash2, CheckCircle2, UserPlus, ShoppingBag, Coins, CreditCard, AlertTriangle, Search } from 'lucide-react';
+import { queueOfflineMutation } from '@/lib/offline-queue';
 import styles from './NewSaleModal.module.css';
 
 interface NewSaleModalProps {
@@ -282,20 +283,60 @@ export default function NewSaleModal({ onClose, onSaleCreated }: NewSaleModalPro
         const sellerId = (await supabase!.auth.getUser()).data.user?.id;
 
         // Insert sale
-        const { data: saleData, error: saleErr } = await supabase!
-          .from('sales')
-          .insert({
-            organization_id: orgId,
-            client_id: selectedClientId || null,
-            seller_id: sellerId,
-            total_amount: totalAmount,
-            payment_method: paymentMethod,
-            status: paymentMethod === 'fiado' ? 'pendente' : 'pago'
-          })
-          .select()
-          .single();
+        let saleData: any = null;
+        let saleErr: any = null;
 
-        if (saleErr) throw saleErr;
+        try {
+          const res = await supabase!
+            .from('sales')
+            .insert({
+              organization_id: orgId,
+              client_id: selectedClientId || null,
+              seller_id: sellerId,
+              total_amount: totalAmount,
+              payment_method: paymentMethod,
+              status: paymentMethod === 'fiado' ? 'pendente' : 'pago'
+            })
+            .select()
+            .single();
+          saleData = res.data;
+          saleErr = res.error;
+        } catch (e: any) {
+          saleErr = e;
+        }
+
+        if (saleErr) {
+          if (!navigator.onLine || saleErr.message === 'Failed to fetch' || saleErr.status === 0) {
+            const offlineSaleId = `sale_offline_${Date.now()}`;
+            
+            queueOfflineMutation('sales', 'insert', {
+              id: offlineSaleId,
+              organization_id: orgId,
+              client_id: selectedClientId || null,
+              seller_id: sellerId,
+              total_amount: totalAmount,
+              payment_method: paymentMethod,
+              status: paymentMethod === 'fiado' ? 'pendente' : 'pago',
+              created_at: new Date().toISOString()
+            });
+
+            const itemsToInsert = cart.map(item => ({
+              sale_id: offlineSaleId,
+              product_id: item.productId,
+              variant_id: item.variantId,
+              quantity: item.quantity,
+              price_per_box: item.pricePerBox,
+              total_price: item.totalPrice
+            }));
+            queueOfflineMutation('sale_items', 'insert', itemsToInsert);
+
+            alert('⚠️ Conectividade instável! Venda registrada localmente no navegador (offline). Ela será sincronizada automaticamente assim que a internet retornar.');
+            onSaleCreated();
+            onClose();
+            return;
+          }
+          throw saleErr;
+        }
 
         // Insert items
         const itemsToInsert = cart.map(item => ({
@@ -307,9 +348,15 @@ export default function NewSaleModal({ onClose, onSaleCreated }: NewSaleModalPro
           total_price: item.totalPrice
         }));
 
-        const { error: itemsErr } = await supabase!
-          .from('sale_items')
-          .insert(itemsToInsert);
+        let itemsErr: any = null;
+        try {
+          const res = await supabase!
+            .from('sale_items')
+            .insert(itemsToInsert);
+          itemsErr = res.error;
+        } catch (e: any) {
+          itemsErr = e;
+        }
 
         if (itemsErr) throw itemsErr;
 
