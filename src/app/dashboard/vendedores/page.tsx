@@ -4,6 +4,12 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase, isMockMode, mockDb, mockStore } from '@/lib/supabase';
+import { Profile, Sale, Client } from '@/lib/types';
+
+interface SaleWithRelations extends Sale {
+  clients: { name: string } | null;
+  profiles: { name: string; role: string; email?: string; avatar_url?: string | null } | null;
+}
 import { 
   Users, 
   TrendingUp, 
@@ -17,22 +23,26 @@ import {
   AlertTriangle,
   UserCheck
 } from 'lucide-react';
-import SaleDetailModal from '@/components/SaleDetailModal';
+import dynamic from 'next/dynamic';
 import styles from './vendedores.module.css';
+
+const SaleDetailModal = dynamic(() => import('@/components/SaleDetailModal'), {
+  ssr: false
+});
 
 export default function VendedoresPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [vendedores, setVendedores] = useState<any[]>([]);
-  const [sales, setSales] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
+  const [vendedores, setVendedores] = useState<Profile[]>([]);
+  const [sales, setSales] = useState<SaleWithRelations[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [viewingDetailMobile, setViewingDetailMobile] = useState(false);
   
   // Sale detail modal state
-  const [selectedSaleForModal, setSelectedSaleForModal] = useState<any | null>(null);
+  const [selectedSaleForModal, setSelectedSaleForModal] = useState<SaleWithRelations | null>(null);
 
   const loadData = async () => {
     setLoading(true);

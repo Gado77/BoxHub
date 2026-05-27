@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { createClient } from '@/lib/supabase-server';
 import { rateLimit } from '@/lib/rate-limit';
+import { getOrgFeatures } from '@/lib/features';
+
 
 const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
 
@@ -52,6 +54,21 @@ export async function GET(request: Request) {
     const orgId = profile.organization_id;
     const role = profile.role;
     const sellerId = profile.id;
+
+    // Verificar se a organização tem permissão de usar os relatórios de IA
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('company_id', orgId)
+      .single();
+
+    const features = getOrgFeatures(subscription);
+    if (!features.canUseReports) {
+      return NextResponse.json({ 
+        error: 'Recurso premium. Faça o upgrade para o Plano Pro para obter insights automáticos da IA.' 
+      }, { status: 403 });
+    }
+
 
     // Buscar clientes e vendas filtrados pela organização do usuário autenticado
     const { data: clients, error: clientsError } = await supabase

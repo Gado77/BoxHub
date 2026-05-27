@@ -52,6 +52,7 @@ export default function ClientesPage() {
   const [amortizeMethod, setAmortizeMethod] = useState<'dinheiro' | 'pix'>('pix');
   const [amortizeLoading, setAmortizeLoading] = useState(false);
   const [amortizeSuccess, setAmortizeSuccess] = useState(false);
+  const [amortizeError, setAmortizeError] = useState<string | null>(null);
 
   // New Client Form State
   const [newClientName, setNewClientName] = useState('');
@@ -281,10 +282,17 @@ export default function ClientesPage() {
     e.preventDefault();
     if (!selectedClientId || !amortizeAmount || Number(amortizeAmount) <= 0) return;
 
+    const amountNum = parseFloat(amortizeAmount);
+    const previousBalance = clientFiadoBalance;
+
+    // Atualização Otimista imediata na UI
+    setClientFiadoBalance(prev => Math.max(0, prev - amountNum));
+    setAmortizeAmount('');
+    setAmortizeSuccess(true);
+    setAmortizeError(null);
     setAmortizeLoading(true);
+
     try {
-      const amountNum = parseFloat(amortizeAmount);
-      
       if (isMockMode) {
         mockDb.fiado.pay(selectedClientId, amountNum, amortizeMethod);
         await new Promise(r => setTimeout(r, 600));
@@ -302,14 +310,15 @@ export default function ClientesPage() {
 
         if (error) throw error;
       }
-
-      setAmortizeAmount('');
-      setAmortizeSuccess(true);
       
-      // Reload lists and details
+      // Reload lists and details in background to sync with real values
       loadClients();
     } catch (err: any) {
-      console.error(err);
+      console.error('Erro na amortização:', err);
+      // Reverter estado otimista em caso de erro
+      setClientFiadoBalance(previousBalance);
+      setAmortizeSuccess(false);
+      setAmortizeError(err.message || 'Erro ao processar pagamento. Tente novamente.');
     } finally {
       setAmortizeLoading(false);
     }
@@ -682,9 +691,16 @@ export default function ClientesPage() {
                 </h4>
                 
                 {amortizeSuccess && (
-                  <div className="badge badge-success" style={{ display: 'flex', gap: '0.5rem', width: '100%', padding: '0.6rem', borderRadius: 'var(--radius-sm)' }}>
+                  <div className="badge badge-success" style={{ display: 'flex', gap: '0.5rem', width: '100%', padding: '0.6rem', borderRadius: 'var(--radius-sm)', marginBottom: '0.5rem' }}>
                     <CheckCircle size={16} />
                     <span>Transação concluída com sucesso!</span>
+                  </div>
+                )}
+
+                {amortizeError && (
+                  <div className="badge badge-danger" style={{ display: 'flex', gap: '0.5rem', width: '100%', padding: '0.6rem', borderRadius: 'var(--radius-sm)', marginBottom: '0.5rem' }}>
+                    <AlertTriangle size={16} />
+                    <span>{amortizeError}</span>
                   </div>
                 )}
 

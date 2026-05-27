@@ -12,7 +12,9 @@ export interface Organization {
   name: string;
   stripe_customer_id: string | null;
   subscription_status: 'trial' | 'active' | 'past_due' | 'canceled';
+  subscription_price_id?: string | null;
   settings: OrgSettings;
+  created_at?: string;
 }
 
 export interface Profile {
@@ -100,3 +102,19 @@ export interface FiadoPayment {
   payment_method: 'dinheiro' | 'pix';
   created_at: string;
 }
+
+export interface Subscription {
+  id: string;
+  company_id: string;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  stripe_price_id: string | null;
+  plan: 'basic' | 'pro' | 'enterprise';
+  status: string;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  trial_ends_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+

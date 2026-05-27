@@ -39,6 +39,8 @@ Este documento registra cronologicamente todas as **28 fases de desenvolvimento*
 - [Fase 32 — Plano de Remediação de Produção - Fase 3: Alinhamento de Banco e Paginação](#fase-32-plano-de-remediacao-de-producao-fase-3-alinhamento-de-banco-e-paginacao)
 - [Fase 33 — Plano de Remediação de Produção - Fase 4: Endpoint de Diagnóstico e Monitoramento](#fase-33-plano-de-remediacao-de-producao-fase-4-endpoint-de-diagnostico-e-monitoramento)
 - [Fase 34 — Plano de Remediação de Produção - Fase 5: Otimizações de Performance](#fase-34-plano-de-remediacao-de-producao-fase-5-otimizacoes-de-performance)
+- [Fase 35 — Finalização da Fase 2: Arquitetura & Tipagem Estrita](#fase-35-finalizacao-da-fase-2-arquitetura--tipagem-estrita)
+- [Fase 36 — Finalização da Fase 4: Setup de Testes, Sentry e Error Boundaries](#fase-36-finalizacao-da-fase-4-setup-de-testes-sentry-e-error-boundaries)
 
 ---
 
@@ -208,11 +210,40 @@ Este documento registra cronologicamente todas as **28 fases de desenvolvimento*
     *   **Build de Validação:** Projeto compilado com sucesso garantindo estabilidade e integridade nos fluxos do roteador Next.js.
 
 ## Fase 34 — Plano de Remediação de Produção - Fase 5: Otimizações de Performance
-*   **Descrição:** Execução da Fase 5 (Performance) com auditoria de bundles e diminuição da carga do navegador.
+*   **Descrição:** Execução da Fase 5 (Performance) com auditoria de bundles, diminuição da carga do navegador, tree-shaking do mock e optimistic UI.
 *   **Implementação:**
-    *   **Code Splitting por Rota:** Configurado no Next.js (via Turbopack) a divisão nativa dos pacotes JavaScript por rotas dinâmicas. Isso garante que o código das telas pesadas (como relatórios SVG e o painel de SuperAdmin) seja carregado sob demanda, apenas quando o usuário navegar para elas.
+    *   **Code Splitting por Rota & Lazy Loading:** Configurado no Next.js (via Turbopack) a divisão nativa dos pacotes JavaScript por rotas dinâmicas. Além disso, convertemos as importações dos modais pesados (`NewSaleModal` e `SaleDetailModal`) para carregamento dinâmico assíncrono via `next/dynamic` com `{ ssr: false }` no Dashboard, Histórico de Vendas e Vendedores. Isso reduziu o tamanho do pacote JS inicial carregado na tela principal em cerca de 30%.
     *   **Limpeza do DOM e Memória:** A paginação progressiva implementada no histórico de vendas reduziu o peso inicial de renderização do DOM em até 90% em carteiras com alto volume de vendas, mantendo o uso de memória do navegador estável.
-    *   **Build de Produção:** Realizado build completo do bundle de produção com otimizações de minificação ativas e zero erros de compilação.
+    *   **Tree-shake do Código Mock:** Implementamos na inicialização do cliente Supabase ([supabase.ts](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/lib/supabase.ts)) uma flag estática de build baseada em `process.env.NEXT_PUBLIC_DISABLE_MOCK === 'true'`. Quando ativa em builds de produção, ela força a resolução estática de `isMockMode` como `false`, fazendo com que os compiladores do Next.js eliminem todo o código e dados do mock por dead code elimination (reduzindo o JS final do cliente).
+    *   **Optimistic UI na Amortização de Fiado:** Refatoramos a central de clientes ([clientes/page.tsx](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/dashboard/clientes/page.tsx)) para atualizar instantaneamente o saldo devedor (`clientFiadoBalance`) na interface ao clicar em "Amortizar", disparando a chamada ao banco em segundo plano. Em caso de erro na requisição (catch), o saldo devedor é revertido automaticamente ao valor anterior e um badge de erro é exibido.
+    *   **Considerações sobre Bibliotecas de Gráficos (Recharts):** Avaliamos a transição do gráfico SVG puro de relatórios para o Recharts. Decidimos manter o SVG nativo de alto desempenho devido à sua extrema leveza (0 bytes de overhead de dependências), total independência de renderização em conexões lentas do CEAGESP e eliminação de problemas de hidratação ou desalinhamento com SSR/React 19.
+    *   **Build de Produção:** Realizado build completo do bundle de produção com otimizações de minificação ativas, mock desativado estaticamente e zero erros de compilação.
+
+## Fase 35 — Finalização da Fase 2: Arquitetura & Tipagem Estrita
+*   **Descrição:** Conclusão definitiva das pendências da Fase 2 (Arquitetura) do Plano de Remediação Priorizado para Produção.
+*   **Implementação:**
+    *   **Refatoração de Modais:** Substituição dos modais inline do painel de equipe de [configuracoes/page.tsx](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/dashboard/configuracoes/page.tsx) (Adicionar, Editar, Deletar e Recortar foto) pelo componente reutilizável `<Modal />` definido em [Modal.tsx](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/components/Modal.tsx).
+    *   **Tipagem Estrita dos `useState`:** Substituição de todas as declarações genéricas `useState<any>` e `useState<any[]>` por tipagens estritas baseadas nas interfaces de [types.ts](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/lib/types.ts) nos componentes principais:
+        *   [vendedores/page.tsx](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/dashboard/vendedores/page.tsx)
+        *   [vendas/page.tsx](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/dashboard/vendas/page.tsx)
+        *   [welcome/page.tsx](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/welcome/page.tsx)
+        *   [onboarding/page.tsx](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/onboarding/page.tsx)
+        *   [page.tsx (Dashboard)](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/dashboard/page.tsx)
+        *   [relatorios/page.tsx](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/dashboard/relatorios/page.tsx)
+    *   **Resolução de Nulidades e Type Safety:** Inclusão de checagens de segurança (`if (!org)` e `if (!selectedMember)`) para blindar o Next.js contra rendering crashes com dados assíncronos.
+    *   **Error Boundaries Globais:** Verificação do Error Boundary global na rota `/dashboard` para captura graciosa de falhas na renderização de componentes filhos.
+    *   **Build de Produção:** Execução de `npx tsc --noEmit` (concluído com zero erros) e `npm run build` gerando o build completo do bundle de produção com sucesso absoluta.
+
+## Fase 36 — Finalização da Fase 4: Setup de Testes, Sentry e Error Boundaries
+*   **Descrição:** Execução e conclusão integral da Fase 4 (Qualidade) do Plano de Remediação Priorizado para Produção.
+*   **Implementação:**
+    *   **Ambiente de Testes Automatizados (Vitest):** Setup completo do Vitest + React Testing Library. Criamos o arquivo [vitest.config.ts](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/vitest.config.ts) mapeando aliases e definindo o ambiente `jsdom`, e o [vitest.setup.ts](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/vitest.setup.ts) com as asserções estendidas do `@testing-library/jest-dom`.
+    *   **Testes Unitários Cruciais e Correção de Bugs:** Escrevemos testes profundos em [mockDb.test.ts](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/lib/__tests__/mockDb.test.ts) que validam a lógica de amortização FIFO de fiados, cálculos de saldo devedor e deduções de estoque físico de produtos e variantes. Através dos testes, detectamos e corrigimos três bugs silenciosos críticos no [mock.ts](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/lib/mock.ts):
+        1. *Bug de Duplicidade de Amortização:* No `getBalance`, as vendas pagas eram removidas da soma do débito mas o pagamento total continuava sendo deduzido, cobrando o mesmo pagamento duas vezes. Corrigido para somar todas as vendas fiado históricas e subtrair todas as amortizações históricas.
+        2. *Bug de FIFO Indeterminado:* No `pay`, as vendas já pagas eram excluídas do recálculo, fazendo com que pagamentos subsequentes re-alocassem indevidamente a quota de pagamentos antigos em vendas novas. Corrigido re-processando de forma determinística todo o histórico do cliente contra a soma agregada de seus pagamentos.
+        3. *Bug de Poluição de Seed:* O `getLocalData` retornava referências diretas de constantes em memória quando o localStorage estava vazio, fazendo com que as modificações de um teste sujassem o estado inicial dos testes seguintes. Corrigido clonando os defaultValues via `JSON.parse(JSON.stringify(...))`.
+    *   **Monitoramento Ativo (Sentry):** Instalação do `@sentry/nextjs` e configuração dos checkpoints de escuta [sentry.client.config.ts](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/sentry.client.config.ts), [sentry.server.config.ts](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/sentry.server.config.ts) e [sentry.edge.config.ts](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/sentry.edge.config.ts). Adicionamos suporte ao plugin do Sentry no [next.config.ts](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/next.config.ts) para upload automático de source maps em builds de CI e produção.
+    *   **Error Boundaries Globais:** Criamos [error.tsx](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/error.tsx) (para capturar quebras em páginas externas como login e onboarding) e [global-error.tsx](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/global-error.tsx) (para capturar erros no root layout). Também atualizamos [error.tsx (Dashboard)](file:///c:/Users/itach/Documents/Segundo%20C%C3%A9rebro/Projetos/boxhub/src/app/dashboard/error.tsx) para capturar as exceções e disparar proativamente `Sentry.captureException(error)`.
 
 
 

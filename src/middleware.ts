@@ -84,6 +84,68 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Validação de Limites, Trial e Inadimplência (B2B SaaS Billing Enforcement)
+  if (user && (isDashboardRoute || isApiRoute)) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profile) {
+      const { data: subscription } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('company_id', profile.organization_id)
+        .single();
+
+      if (subscription) {
+        const now = new Date();
+        const isTrialExpired = 
+          subscription.status === 'trialing' && 
+          subscription.trial_ends_at && 
+          new Date(subscription.trial_ends_at) < now;
+
+        const isInactive = ['canceled', 'unpaid'].includes(subscription.status);
+
+        if (isTrialExpired || isInactive) {
+          // Rotas liberadas para regularização e checkout do Stripe
+          const isBypass = 
+            request.nextUrl.pathname === '/dashboard/planos' ||
+            request.nextUrl.pathname.startsWith('/api/stripe') ||
+            request.nextUrl.pathname === '/api/health';
+
+          if (!isBypass) {
+            if (isDashboardRoute) {
+              const url = request.nextUrl.clone();
+              url.pathname = '/dashboard/planos';
+              url.searchParams.set('reason', isTrialExpired ? 'trial_expired' : 'inactive');
+              return NextResponse.redirect(url);
+            }
+            if (isApiRoute) {
+              return new NextResponse(
+                JSON.stringify({ 
+                  error: 'Assinatura suspensa ou expirada. Regularize seu plano de faturamento.',
+                  reason: isTrialExpired ? 'trial_expired' : 'inactive'
+                }),
+                { status: 403, headers: { 'Content-Type': 'application/json' } }
+              );
+            }
+          }
+        } else {
+          // Bloqueio de recursos premium específicos (ex: relatórios no plano básico)
+          const isReports = request.nextUrl.pathname.startsWith('/dashboard/relatorios');
+          if (isReports && subscription.plan === 'basic') {
+            const url = request.nextUrl.clone();
+            url.pathname = '/dashboard/planos';
+            url.searchParams.set('reason', 'requires_pro');
+            return NextResponse.redirect(url);
+          }
+        }
+      }
+    }
+  }
+
   return response;
 }
 

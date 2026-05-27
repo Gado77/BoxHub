@@ -3,6 +3,11 @@
 import Link from 'next/link';
 import { useState, useEffect, useMemo } from 'react';
 import { supabase, isMockMode, mockDb } from '@/lib/supabase';
+import { Profile, Sale, Client } from '@/lib/types';
+
+interface SaleWithClient extends Sale {
+  clients: { name: string } | null;
+}
 
 import { 
   Search, 
@@ -17,15 +22,23 @@ import {
   ArrowLeft,
   Plus
 } from 'lucide-react';
-import SaleDetailModal from '@/components/SaleDetailModal';
-import NewSaleModal from '@/components/NewSaleModal';
+import dynamic from 'next/dynamic';
 import styles from './vendas.module.css';
 
+const NewSaleModal = dynamic(() => import('@/components/NewSaleModal'), {
+  ssr: false,
+  loading: () => <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}><div className="loading-spinner"></div></div>
+});
+
+const SaleDetailModal = dynamic(() => import('@/components/SaleDetailModal'), {
+  ssr: false
+});
+
 export default function VendasHistoryPage() {
-  const [sales, setSales] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+  const [sales, setSales] = useState<SaleWithClient[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loadingData, setLoadingData] = useState(true);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [showNewSaleModal, setShowNewSaleModal] = useState(false);
 
   // Filter States
@@ -42,7 +55,7 @@ export default function VendasHistoryPage() {
   }, [searchTerm, paymentMethod, status, sortBy]);
 
   // Detail Modal State
-  const [selectedSale, setSelectedSale] = useState<any | null>(null);
+  const [selectedSale, setSelectedSale] = useState<SaleWithClient | null>(null);
 
   // Load Sales and Clients Data
   const loadData = async () => {

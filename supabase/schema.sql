@@ -307,3 +307,67 @@ create index if not exists idx_sale_items_sale_id on public.sale_items(sale_id);
 create index if not exists idx_fiado_payments_org_id on public.fiado_payments(organization_id);
 create index if not exists idx_fiado_payments_client_id on public.fiado_payments(client_id);
 create index if not exists idx_ai_insights_org_id on public.ai_insights(organization_id);
+
+-- =========================================================================
+-- TRIGGERS FOR UPDATED_AT TIMESTAMPS
+-- =========================================================================
+create or replace function public.handle_updated_at()
+returns trigger as $$
+begin
+    new.updated_at = now();
+    return new;
+end;
+$$ language plpgsql;
+
+create trigger on_client_update
+    before update on public.clients
+    for each row
+    execute function public.handle_updated_at();
+
+create trigger on_product_variant_update
+    before update on public.product_variants
+    for each row
+    execute function public.handle_updated_at();
+
+-- =========================================================================
+-- 10. BILLING / SUBSCRIPTIONS
+-- =========================================================================
+create table if not exists public.subscriptions (
+    id uuid primary key default gen_random_uuid(),
+    company_id uuid not null references public.organizations(id) on delete cascade unique,
+    stripe_customer_id text unique,
+    stripe_subscription_id text unique,
+    stripe_price_id text,
+    plan text not null check (plan in ('basic', 'pro', 'enterprise')),
+    status text not null,
+    current_period_end timestamptz,
+    cancel_at_period_end boolean not null default false,
+    trial_ends_at timestamptz,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+-- Enable RLS on subscriptions
+alter table public.subscriptions enable row level security;
+
+-- Policies for subscriptions
+create policy "Users can view their organization's subscription"
+    on public.subscriptions for select
+    using (company_id = public.current_user_org_id());
+
+create policy "Superadmins can manage all subscriptions"
+    on public.subscriptions for all
+    using (public.is_superadmin())
+    with check (public.is_superadmin());
+
+-- Trigger updated_at for subscriptions
+create trigger on_subscription_update
+    before update on public.subscriptions
+    for each row
+    execute function public.handle_updated_at();
+
+-- Indexes for subscriptions
+create index if not exists idx_subscriptions_company_id on public.subscriptions(company_id);
+create index if not exists idx_subscriptions_stripe_sub_id on public.subscriptions(stripe_subscription_id);
+
+

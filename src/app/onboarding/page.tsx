@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, isMockMode, mockDb, mockStore } from '@/lib/supabase';
+import { Profile, Organization } from '@/lib/types';
 import { Sprout, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react';
 import styles from './onboarding.module.css';
 
@@ -13,8 +14,8 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
   
   // User/Org session state
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [org, setOrg] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
+  const [org, setOrg] = useState<Organization | null>(null);
 
   // Form Fields
   const [boxName, setBoxName] = useState('');
@@ -87,6 +88,10 @@ export default function OnboardingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!org) {
+      setError('Organização não identificada.');
+      return;
+    }
     if (!boxName.trim()) {
       setError('O nome da empresa/firma é obrigatório.');
       return;

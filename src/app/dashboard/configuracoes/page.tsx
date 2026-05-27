@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase, isMockMode, mockDb, mockStore } from '@/lib/supabase';
+import { Organization, Profile, Subscription } from '@/lib/types';
+import Modal from '@/components/Modal';
 import { 
   Settings, 
   Users, 
@@ -25,9 +28,11 @@ import {
 import styles from './configuracoes.module.css';
 
 export default function ConfiguracoesPage() {
-  const [org, setOrg] = useState<any>(null);
-  const [team, setTeam] = useState<any[]>([]);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const router = useRouter();
+  const [org, setOrg] = useState<Organization | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [team, setTeam] = useState<Profile[]>([]);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [estoqueAtivo, setEstoqueAtivo] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -50,15 +55,15 @@ export default function ConfiguracoesPage() {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   // Selected Member for Edit/Delete
-  const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [selectedMember, setSelectedMember] = useState<Profile | null>(null);
 
   // Form states for Add/Edit Member
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberEmail, setNewMemberEmail] = useState('');
-  const [newMemberRole, setNewMemberRole] = useState<'admin' | 'vendedor'>('vendedor');
+  const [newMemberRole, setNewMemberRole] = useState<'admin' | 'vendedor' | 'superadmin'>('vendedor');
   const [editMemberName, setEditMemberName] = useState('');
   const [memberPassword, setMemberPassword] = useState('');
-  const [editMemberRole, setEditMemberRole] = useState<'admin' | 'vendedor'>('vendedor');
+  const [editMemberRole, setEditMemberRole] = useState<'admin' | 'vendedor' | 'superadmin'>('vendedor');
   const [invitedViaEmail, setInvitedViaEmail] = useState(false);
 
   // Image Cropping States
@@ -81,10 +86,12 @@ export default function ConfiguracoesPage() {
         const currentOrg = mockDb.getOrg();
         const user = mockDb.getCurrentUser();
         const profiles = mockDb.profiles.list();
+        const currentSub = mockDb.subscriptions.get();
 
         setOrg(currentOrg);
         setCurrentUser(user);
         setTeam(profiles);
+        setSubscription(currentSub);
         setEstoqueAtivo(currentOrg.settings?.estoque_ativo || false);
 
         setBoxName(currentOrg.name || '');
@@ -119,6 +126,14 @@ export default function ConfiguracoesPage() {
             .eq('organization_id', profile.organization_id);
 
           setTeam(profiles || []);
+
+          const { data: subData } = await supabase!
+            .from('subscriptions')
+            .select('*')
+            .eq('company_id', profile.organization_id)
+            .single();
+
+          setSubscription(subData || null);
         }
       }
     } catch (err) {
@@ -132,6 +147,28 @@ export default function ConfiguracoesPage() {
     loadConfigData();
   }, []);
 
+  // Lógica para obter a quantidade de dias restantes de trial
+  const getTrialDaysRemaining = () => {
+    if (subscription && subscription.trial_ends_at) {
+      const ends = new Date(subscription.trial_ends_at).getTime();
+      const now = new Date().getTime();
+      const diffTime = ends - now;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays > 0 ? diffDays : 0;
+    }
+    
+    if (org && org.created_at) {
+      const created = new Date(org.created_at).getTime();
+      const ends = created + 7 * 24 * 60 * 60 * 1000;
+      const now = new Date().getTime();
+      const diffTime = ends - now;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays > 0 ? diffDays : 0;
+    }
+    
+    return 0;
+  };
+
   // Update Inventory Toggle setting immediately
   const handleToggleEstoque = async (checked: boolean) => {
     setEstoqueAtivo(checked);
@@ -139,6 +176,7 @@ export default function ConfiguracoesPage() {
       if (isMockMode) {
         mockDb.updateOrgSettings(checked);
       } else {
+        if (!org) return;
         const updatedSettings = { ...org.settings, estoque_ativo: checked };
         const { error } = await supabase!
           .from('organizations')
@@ -160,6 +198,10 @@ export default function ConfiguracoesPage() {
   // Save general Box details
   const handleSaveBoxDetails = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!org) {
+      setSaveError('Organização não carregada.');
+      return;
+    }
     if (!boxName.trim()) {
       setSaveError('O nome do Box é obrigatório.');
       return;
@@ -211,6 +253,10 @@ export default function ConfiguracoesPage() {
   // Team Actions: ADD member
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!org) {
+      setModalError('Organização não carregada.');
+      return;
+    }
     if (!newMemberName.trim()) {
       setModalError('O nome é obrigatório.');
       return;
@@ -275,6 +321,7 @@ export default function ConfiguracoesPage() {
   // Team Actions: EDIT member details
   const handleEditMember = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedMember) return;
     if (!editMemberName.trim()) {
       setModalError('O nome é obrigatório.');
       return;
@@ -354,37 +401,9 @@ export default function ConfiguracoesPage() {
     }
   };
 
-  // Simulates upgrading Stripe subscription locally (mock mode)
-  const handleUpgradeMock = async (newStatus: 'active' | 'trial') => {
-    if (!isMockMode) {
-      try {
-        const res = await fetch('/api/stripe/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || 'price_123',
-            orgId: org?.id,
-            orgName: org?.name,
-            userEmail: currentUser?.email
-          })
-        });
-        const data = await res.json();
-        if (data.url) window.location.href = data.url;
-      } catch (err) {
-        console.error(err);
-      }
-      return;
-    }
-
-    setLoading(true);
-    const orgs = mockStore.getOrgs();
-    const current = orgs.find(o => o.id === org.id);
-    if (current) {
-      current.subscription_status = newStatus === 'active' ? 'active' : 'trial';
-      mockStore.saveOrgs(orgs);
-    }
-    await new Promise(r => setTimeout(r, 600));
-    loadConfigData();
+  // Redireciona para o painel de planos
+  const handleBillingAction = () => {
+    router.push('/dashboard/planos');
   };
 
   const getInitials = (name: string) => {
@@ -705,6 +724,7 @@ export default function ConfiguracoesPage() {
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
+                          if (!org) return;
                           if (file.size > 2 * 1024 * 1024) {
                             alert('A imagem deve ter no máximo 2MB.');
                             return;
@@ -832,67 +852,73 @@ export default function ConfiguracoesPage() {
         <div className={styles.rightColumn}>
           
           {/* Card: Billing (Discreet Card) */}
-          {isUserAdmin && (
-            <div id="subscription-plan" className={`${styles.card} glass`}>
-              <div className={styles.cardHeader}>
-                <h3 className={styles.cardTitle}>
-                  <CreditCard className={styles.titleIcon} size={18} />
-                  <span>Assinatura & Plano</span>
-                </h3>
-              </div>
+          {isUserAdmin && (() => {
+            const trialDaysLeft = getTrialDaysRemaining();
+            const isTrialActive = subscription 
+              ? (subscription.status === 'trialing' && trialDaysLeft > 0) 
+              : (trialDaysLeft > 0);
+            
+            const planName = subscription 
+              ? (subscription.plan === 'pro' ? 'Plano Pro' : subscription.plan === 'enterprise' ? 'Plano Enterprise' : 'Plano Básico') 
+              : (isTrialActive ? 'Plano Pro (Trial)' : 'Sem plano ativo');
+            
+            const statusLabel = subscription?.status === 'active' 
+              ? 'Assinatura Ativa' 
+              : (isTrialActive ? 'Período de Testes' : 'Faturamento Pendente');
+            
+            const badgeClass = subscription?.status === 'active' 
+              ? 'badge-success' 
+              : (isTrialActive ? 'badge-warning' : 'badge-danger');
+            
+            const priceVal = subscription 
+              ? (subscription.plan === 'pro' ? '297' : subscription.plan === 'basic' ? '147' : '0') 
+              : (isTrialActive ? '297' : '0');
+            
+            const descText = isTrialActive 
+              ? `Você está testando os recursos do BoxHub gratuitamente no período de testes. Restam ${trialDaysLeft} dias de teste.` 
+              : subscription?.status === 'active' 
+              ? 'Sua conta está ativa e regularizada com faturamento via Stripe. Acesso total a recursos ilimitados.' 
+              : 'Sua assinatura está suspensa ou inativa. Regularize ou escolha um plano de faturamento.';
 
-              <div className={styles.billingCard}>
-                <div className={styles.billingInfo}>
-                  <div className={styles.billingHeader}>
-                    <div className={styles.planStatus}>
-                      <Crown size={16} style={{ color: org?.subscription_status === 'active' ? 'var(--warning)' : 'var(--text-muted)' }} />
-                      <span className={styles.planNameLabel}>
-                        {org?.subscription_status === 'active' ? 'Plano Pro Ativo' : 'Plano Básico (Trial)'}
-                      </span>
-                    </div>
-                    <span className={`badge ${org?.subscription_status === 'active' ? 'badge-success' : 'badge-warning'}`}>
-                      {org?.subscription_status === 'active' ? 'Faturamento Ok' : '14 dias restantes'}
-                    </span>
-                  </div>
-
-                  <div className={styles.billingPricing}>
-                    <span className={styles.billingPriceSymbol}>R$</span>
-                    <span className={styles.billingPriceVal}>
-                      {org?.subscription_status === 'active' ? '149' : '0'}
-                    </span>
-                    <span className={styles.billingPricePeriod}>/mês</span>
-                  </div>
-
-                  <p className={styles.billingDescText}>
-                    {org?.subscription_status === 'active' 
-                      ? 'Acesso a todos os recursos ilimitados, incluindo emissão de NF-e.' 
-                      : 'Período gratuito de experimentação. Faça o upgrade para liberar todos os recursos.'
-                    }
-                  </p>
+            return (
+              <div id="subscription-plan" className={`${styles.card} glass`}>
+                <div className={styles.cardHeader}>
+                  <h3 className={styles.cardTitle}>
+                    <CreditCard className={styles.titleIcon} size={18} />
+                    <span>Assinatura & Plano</span>
+                  </h3>
                 </div>
 
-                <div className={styles.billingActions}>
-                  {org?.subscription_status === 'active' ? (
+                <div className={styles.billingCard}>
+                  <div className={styles.billingInfo}>
+                    <div className={styles.billingHeader}>
+                      <div className={styles.planStatus}>
+                        <Crown size={16} style={{ color: subscription?.status === 'active' || isTrialActive ? 'var(--warning)' : 'var(--text-muted)' }} />
+                        <span className={styles.planNameLabel}>{planName}</span>
+                      </div>
+                      <span className={`badge ${badgeClass}`}>{statusLabel}</span>
+                    </div>
+
+                    <div className={styles.billingPricing}>
+                      <span className={styles.billingPriceSymbol}>R$</span>
+                      <span className={styles.billingPriceVal}>{priceVal}</span>
+                      <span className={styles.billingPricePeriod}>/mês</span>
+                    </div>
+
+                    <p className={styles.billingDescText}>{descText}</p>
+                  </div>
+
                     <button 
-                      onClick={() => handleUpgradeMock('trial')} 
-                      className="btn-secondary" 
-                      style={{ width: '100%', fontSize: '0.85rem', justifyContent: 'center' }}
-                    >
-                      Mudar para Plano Básico
-                    </button>
-                  ) : (
-                    <button 
-                      onClick={() => handleUpgradeMock('active')} 
+                      onClick={handleBillingAction} 
                       className="btn-primary" 
                       style={{ width: '100%', fontSize: '0.85rem', justifyContent: 'center' }}
                     >
-                      Fazer Upgrade para Pro
+                      Gerenciar Planos
                     </button>
-                  )}
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Card: Team Directory */}
           <div className={`${styles.card} glass`}>
@@ -1018,15 +1044,11 @@ export default function ConfiguracoesPage() {
 
       {/* ================= MODALS ================= */}
 
-      {isAddModalOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={`${styles.modalContent} glass`}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Adicionar Membro na Equipe</h3>
-              <button className={styles.modalCloseBtn} onClick={() => { setIsAddModalOpen(false); setInvitedViaEmail(false); }}>
-                <X size={18} />
-              </button>
-            </div>
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => { setIsAddModalOpen(false); setInvitedViaEmail(false); }}
+        title="Adicionar Membro na Equipe"
+      >
 
             {invitedViaEmail || memberPassword ? (
               <div style={{ padding: '0.5rem 0' }}>
@@ -1142,23 +1164,17 @@ export default function ConfiguracoesPage() {
                 </div>
               </form>
             )}
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Modal: EDIT MEMBER */}
-      {isEditModalOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={`${styles.modalContent} glass`}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Editar Membro da Equipe</h3>
-              <button className={styles.modalCloseBtn} onClick={() => {
-                setIsEditModalOpen(false);
-                setSelectedMember(null);
-              }}>
-                <X size={18} />
-              </button>
-            </div>
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedMember(null);
+        }}
+        title="Editar Membro da Equipe"
+      >
 
             <form onSubmit={handleEditMember}>
               {modalError && (
@@ -1207,26 +1223,17 @@ export default function ConfiguracoesPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Modal: DELETE CONFIRM */}
-      {isDeleteModalOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={`${styles.modalContent} glass`} style={{ maxWidth: '400px' }}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle} style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <AlertTriangle size={20} />
-                <span>Remover Membro?</span>
-              </h3>
-              <button className={styles.modalCloseBtn} onClick={() => {
-                setIsDeleteModalOpen(false);
-                setSelectedMember(null);
-              }}>
-                <X size={18} />
-              </button>
-            </div>
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setSelectedMember(null);
+        }}
+        title="Remover Membro?"
+      >
 
             <div style={{ padding: '1rem 0' }}>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: '1.5' }}>
@@ -1252,57 +1259,39 @@ export default function ConfiguracoesPage() {
                 {modalLoading ? <span className="loading-spinner"></span> : 'Remover'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Modal: RESET CONFIRM */}
-      {isResetModalOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={`${styles.modalContent} glass`} style={{ maxWidth: '400px' }}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle} style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <AlertTriangle size={20} />
-                <span>Confirmar Reset?</span>
-              </h3>
-              <button className={styles.modalCloseBtn} onClick={() => setIsResetModalOpen(false)}>
-                <X size={18} />
-              </button>
-            </div>
-
-            <div style={{ padding: '1rem 0' }}>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: '1.5' }}>
-                Isso apagará **todas** as modificações de simulação feitas neste navegador, restaurando os produtos, clientes e equipe padrão do BoxHub.
-                A página será recarregada.
-              </p>
-            </div>
-
-            <div className={styles.modalFooter}>
-              <button type="button" className="btn-secondary" onClick={() => setIsResetModalOpen(false)} disabled={modalLoading}>
-                Cancelar
-              </button>
-              <button type="button" className="btn-danger" onClick={handleResetSimulator} disabled={modalLoading}>
-                {modalLoading ? <span className="loading-spinner"></span> : 'Confirmar Reinicialização'}
-              </button>
-            </div>
-          </div>
+      <Modal 
+        isOpen={isResetModalOpen} 
+        onClose={() => setIsResetModalOpen(false)} 
+        title="Confirmar Reset?"
+      >
+        <div style={{ padding: '0.5rem 0' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: '1.5' }}>
+            Isso apagará **todas** as modificações de simulação feitas neste navegador, restaurando os produtos, clientes e equipe padrão do BoxHub.
+            A página será recarregada.
+          </p>
         </div>
-      )}
+
+        <div className={styles.modalFooter}>
+          <button type="button" className="btn-secondary" onClick={() => setIsResetModalOpen(false)} disabled={modalLoading}>
+            Cancelar
+          </button>
+          <button type="button" className="btn-danger" onClick={handleResetSimulator} disabled={modalLoading}>
+            {modalLoading ? <span className="loading-spinner"></span> : 'Confirmar Reinicialização'}
+          </button>
+        </div>
+      </Modal>
 
       {/* Modal: PHOTO CROP EDITOR */}
-      {isCropModalOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={`${styles.modalContent} glass`} style={{ maxWidth: '400px' }}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Editar Foto de Perfil</h3>
-              <button 
-                className={styles.modalCloseBtn} 
-                onClick={() => setIsCropModalOpen(false)}
-                disabled={saveLoading}
-              >
-                <X size={18} />
-              </button>
-            </div>
+      <Modal
+        isOpen={isCropModalOpen}
+        onClose={() => {
+          if (!saveLoading) setIsCropModalOpen(false);
+        }}
+        title="Editar Foto de Perfil"
+      >
 
             <div className={styles.cropContainer}>
               <div 
@@ -1366,9 +1355,7 @@ export default function ConfiguracoesPage() {
                 {saveLoading ? <span className="loading-spinner"></span> : 'Confirmar'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
     </div>
   );

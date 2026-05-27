@@ -21,15 +21,16 @@ import {
   Lock,
   Unlock
 } from 'lucide-react';
+import { Profile, Organization, Sale, Client } from '@/lib/types';
 import styles from './superadmin.module.css';
 
 export default function SuperAdminPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [organizations, setOrganizations] = useState<any[]>([]);
-  const [profiles, setProfiles] = useState<any[]>([]);
-  const [sales, setSales] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiLatency, setApiLatency] = useState<number>(0);
   const [supabaseConnected, setSupabaseConnected] = useState<boolean>(true);

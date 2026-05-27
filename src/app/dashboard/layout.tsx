@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase, isMockMode, mockDb, CRM_BRANDING } from '@/lib/supabase';
+import { Profile, Organization } from '@/lib/types';
 import { 
   LayoutDashboard, 
   Users, 
@@ -34,8 +35,8 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  const [org, setOrg] = useState<any>(null);
+  const [user, setUser] = useState<Profile | null>(null);
+  const [org, setOrg] = useState<Organization | null>(null);
   
   // Theme and Sidebar States
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
@@ -351,9 +352,22 @@ export default function DashboardLayout({
           <h2 className={styles.pageTitle}>{getPageTitle()}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {user?.role === 'admin' && (
-              <Link href="/dashboard/configuracoes#subscription-plan" className={styles.badgeLink}>
-                <span className="badge badge-success" style={{ fontWeight: '500', cursor: 'pointer' }}>
-                  {org?.subscription_status === 'trial' ? 'Período de Teste' : 'Assinante Pro'}
+              <Link href="/dashboard/planos" className={styles.badgeLink}>
+                <span 
+                  className={`badge ${
+                    org?.subscription_status === 'active' 
+                      ? 'badge-success' 
+                      : org?.subscription_status === 'trial' 
+                      ? 'badge-warning' 
+                      : 'badge-danger'
+                  }`} 
+                  style={{ fontWeight: '500', cursor: 'pointer' }}
+                >
+                  {org?.subscription_status === 'active' 
+                    ? (org?.subscription_price_id === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO ? 'Assinante Pro' : 'Assinante Básico')
+                    : org?.subscription_status === 'trial' 
+                    ? 'Período de Testes' 
+                    : 'Ajustar Faturamento'}
                 </span>
               </Link>
             )}

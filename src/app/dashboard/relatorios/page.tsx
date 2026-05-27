@@ -3,6 +3,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { supabase, isMockMode, mockDb, mockStore } from '@/lib/supabase';
+import { Profile, Sale, Client } from '@/lib/types';
+
+interface SaleWithRelations extends Sale {
+  clients: { name: string } | null;
+  profiles: { name: string; role: string; email?: string; avatar_url?: string | null } | null;
+}
 import { 
   TrendingUp, 
   DollarSign, 
@@ -18,19 +24,19 @@ import {
 import styles from './relatorios.module.css';
 
 export default function RelatoriosPage() {
-  const [sales, setSales] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+  const [sales, setSales] = useState<SaleWithRelations[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [items, setItems] = useState<any[]>([]);
-  const [profiles, setProfiles] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7days' | '30days' | 'all'>('7days');
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
 
   const loadData = async () => {
     setLoading(true);
     try {
       // Load current user profile first
-      let userProfile = null;
+      let userProfile: Profile | null = null;
       if (isMockMode) {
         userProfile = mockDb.getCurrentUser();
       } else {
@@ -329,18 +335,18 @@ export default function RelatoriosPage() {
       const sellerId = s.seller_id;
       let sellerName = 'Administrador';
       let sellerRole = 'admin';
-      let sellerAvatar = null;
+      let sellerAvatar: string | null = null;
 
       if (s.profiles) {
         sellerName = s.profiles.name;
         sellerRole = s.profiles.role === 'admin' ? 'Administrador' : 'Vendedor';
-        sellerAvatar = s.profiles.avatar_url;
+        sellerAvatar = s.profiles.avatar_url || null;
       } else if (sellerId) {
         const p = profiles.find(prof => prof.id === sellerId);
         if (p) {
           sellerName = p.name;
           sellerRole = p.role === 'admin' ? 'Administrador' : 'Vendedor';
-          sellerAvatar = p.avatar_url;
+          sellerAvatar = p.avatar_url || null;
         }
       }
 

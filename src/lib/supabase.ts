@@ -9,11 +9,14 @@ export * from './mock';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-export const isMockMode = 
-  !supabaseUrl || 
-  !supabaseAnonKey || 
-  supabaseUrl.includes('your-project-id') || 
-  supabaseAnonKey.includes('your-anon-key');
+export const isMockMode = process.env.NEXT_PUBLIC_DISABLE_MOCK === 'true'
+  ? false
+  : (
+      !supabaseUrl || 
+      !supabaseAnonKey || 
+      supabaseUrl.includes('your-project-id') || 
+      supabaseAnonKey.includes('your-anon-key')
+    );
 
 if (isMockMode) {
   console.warn('⚠️ BoxHub rodando em modo MOCK. Nenhuma chave do Supabase configurada no .env.');

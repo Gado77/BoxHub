@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase-server';
 import { rateLimit } from '@/lib/rate-limit';
+import { getOrgFeatures } from '@/lib/features';
+
 
 // Inicializar Supabase Admin usando a chave de serviço secreta para criar o usuário e perfil
 const supabaseAdmin = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -91,6 +93,36 @@ export async function POST(request: Request) {
         error: 'Apenas superadmins globais podem criar novos superadmins.' 
       }, { status: 403 });
     }
+
+    // 6. Validar limite de usuários do plano (SaaS Billing Enforcement)
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('company_id', organization_id)
+      .single();
+
+    const { count: currentMembersCount, error: countError } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', organization_id);
+
+    if (countError) {
+      return NextResponse.json({ error: 'Erro ao validar limites de membros da equipe.' }, { status: 500 });
+    }
+
+    const features = getOrgFeatures(subscription);
+    if (!features.canInviteUsers) {
+      return NextResponse.json({ 
+        error: 'A sua assinatura atual está suspensa ou expirada. Regularize seu faturamento para convidar membros.' 
+      }, { status: 403 });
+    }
+
+    if (currentMembersCount !== null && currentMembersCount >= features.maxUsers) {
+      return NextResponse.json({ 
+        error: `Limite de usuários atingido para o seu plano (${features.maxUsers} membros). Faça o upgrade do seu plano para adicionar mais membros.` 
+      }, { status: 403 });
+    }
+
 
     const requestUrl = new URL(request.url);
     const origin = requestUrl.origin;

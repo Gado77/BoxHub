@@ -8,7 +8,8 @@ import {
   Sale, 
   SaleItem, 
   FiadoPayment, 
-  OrgSettings 
+  OrgSettings,
+  Subscription
 } from './types';
 
 export const DEFAULT_ORG_ID = 'org-ceagesp-123';
@@ -30,6 +31,38 @@ const initialMockOrgs: Organization[] = [
     settings: { estoque_ativo: false },
   }
 ];
+
+const initialMockSubscriptions: Subscription[] = [
+  {
+    id: 'sub-ceagesp-123',
+    company_id: DEFAULT_ORG_ID,
+    stripe_customer_id: 'cus_mock123',
+    stripe_subscription_id: 'sub_mock123',
+    stripe_price_id: 'price_pro_mock',
+    plan: 'pro',
+    status: 'trialing',
+    current_period_end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    cancel_at_period_end: false,
+    trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'sub-system-admin',
+    company_id: 'org-system-admin',
+    stripe_customer_id: null,
+    stripe_subscription_id: null,
+    stripe_price_id: null,
+    plan: 'enterprise',
+    status: 'active',
+    current_period_end: null,
+    cancel_at_period_end: false,
+    trial_ends_at: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+];
+
 
 const initialMockProfiles: Profile[] = [
   {
@@ -371,16 +404,16 @@ const initialMockSaleItems: SaleItem[] = [
 const initialMockFiadoPayments: FiadoPayment[] = [];
 
 const getLocalData = <T>(key: string, defaultValue: T): T => {
-  if (typeof window === 'undefined') return defaultValue;
+  if (typeof window === 'undefined') return JSON.parse(JSON.stringify(defaultValue));
   const stored = localStorage.getItem(`boxhub_mock_${key}`);
   if (!stored) {
     localStorage.setItem(`boxhub_mock_${key}`, JSON.stringify(defaultValue));
-    return defaultValue;
+    return JSON.parse(JSON.stringify(defaultValue));
   }
   try {
     return JSON.parse(stored);
   } catch {
-    return defaultValue;
+    return JSON.parse(JSON.stringify(defaultValue));
   }
 };
 
@@ -399,6 +432,7 @@ export const mockStore = {
   getSales: () => getLocalData('sales', initialMockSales),
   getSaleItems: () => getLocalData('sale_items', initialMockSaleItems),
   getFiadoPayments: () => getLocalData('fiado_payments', initialMockFiadoPayments),
+  getSubscriptions: () => getLocalData('subscriptions', initialMockSubscriptions),
   
   saveClients: (clients: Client[]) => setLocalData('clients', clients),
   saveProducts: (products: Product[]) => setLocalData('products', products),
@@ -409,10 +443,11 @@ export const mockStore = {
   saveFiadoPayments: (payments: FiadoPayment[]) => setLocalData('fiado_payments', payments),
   saveOrgs: (orgs: Organization[]) => setLocalData('orgs', orgs),
   saveProfiles: (profiles: Profile[]) => setLocalData('profiles', profiles),
+  saveSubscriptions: (subscriptions: Subscription[]) => setLocalData('subscriptions', subscriptions),
 
   resetAll: () => {
     if (typeof window === 'undefined') return;
-    const keys = ['orgs', 'profiles', 'clients', 'products', 'variants', 'stock_movements', 'sales', 'sale_items', 'fiado_payments'];
+    const keys = ['orgs', 'profiles', 'clients', 'products', 'variants', 'stock_movements', 'sales', 'sale_items', 'fiado_payments', 'subscriptions'];
     keys.forEach(k => localStorage.removeItem(`boxhub_mock_${k}`));
     window.location.reload();
   }
@@ -437,6 +472,70 @@ export const mockDb = {
     const orgs = mockStore.getOrgs();
     const user = mockDb.getCurrentUser();
     return orgs.find(o => o.id === user.organization_id) || orgs[0];
+  },
+
+  subscriptions: {
+    get: () => {
+      const subs = mockStore.getSubscriptions();
+      const org = mockDb.getOrg();
+      let sub = subs.find(s => s.company_id === org.id);
+      if (!sub) {
+        sub = {
+          id: `sub-mock-${Date.now()}`,
+          company_id: org.id,
+          stripe_customer_id: 'cus_mock123',
+          stripe_subscription_id: 'sub_mock123',
+          stripe_price_id: 'price_pro_mock',
+          plan: 'pro',
+          status: 'trialing',
+          current_period_end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          cancel_at_period_end: false,
+          trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        subs.push(sub);
+        mockStore.saveSubscriptions(subs);
+      }
+      return sub;
+    },
+    update: (fields: Partial<Subscription>) => {
+      const subs = mockStore.getSubscriptions();
+      const org = mockDb.getOrg();
+      const idx = subs.findIndex(s => s.company_id === org.id);
+      if (idx === -1) return null;
+      subs[idx] = { ...subs[idx], ...fields, updated_at: new Date().toISOString() };
+      mockStore.saveSubscriptions(subs);
+      
+      const orgs = mockStore.getOrgs();
+      const oIdx = orgs.findIndex(o => o.id === org.id);
+      if (oIdx !== -1) {
+        orgs[oIdx].subscription_status = fields.status === 'active' ? 'active' : 'trial';
+        mockStore.saveOrgs(orgs);
+      }
+
+      return subs[idx];
+    },
+    createDefault: (orgId: string) => {
+      const subs = mockStore.getSubscriptions();
+      const newSub: Subscription = {
+        id: `sub-mock-${Date.now()}`,
+        company_id: orgId,
+        stripe_customer_id: 'cus_mock_' + Math.random().toString(36).substring(7),
+        stripe_subscription_id: 'sub_mock_' + Math.random().toString(36).substring(7),
+        stripe_price_id: 'price_pro_mock',
+        plan: 'pro',
+        status: 'trialing',
+        current_period_end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        cancel_at_period_end: false,
+        trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      subs.push(newSub);
+      mockStore.saveSubscriptions(subs);
+      return newSub;
+    }
   },
 
   updateOrgSettings: (estoqueAtivo: boolean) => {
@@ -473,7 +572,7 @@ export const mockDb = {
       const org = mockDb.getOrg();
       return all.filter(p => p.organization_id === org.id);
     },
-    update: (profileId: string, name: string, role: 'admin' | 'vendedor') => {
+    update: (profileId: string, name: string, role: 'admin' | 'vendedor' | 'superadmin') => {
       const all = mockStore.getProfiles();
       const idx = all.findIndex(p => p.id === profileId);
       if (idx === -1) return null;
@@ -807,7 +906,7 @@ export const mockDb = {
       return all.filter(p => p.organization_id === org.id);
     },
     getBalance: (clientId: string) => {
-      const sales = mockStore.getSales().filter(s => s.client_id === clientId && s.payment_method === 'fiado' && s.status === 'pendente' && !s.is_canceled);
+      const sales = mockStore.getSales().filter(s => s.client_id === clientId && s.payment_method === 'fiado' && !s.is_canceled);
       const payments = mockStore.getFiadoPayments().filter(p => p.client_id === clientId);
       
       const totalDebt = sales.reduce((acc, curr) => acc + Number(curr.total_amount), 0);
@@ -832,7 +931,7 @@ export const mockDb = {
       mockStore.saveFiadoPayments(payments);
 
       const sales = mockStore.getSales();
-      const clientSales = sales.filter(s => s.client_id === clientId && s.payment_method === 'fiado' && s.status === 'pendente' && !s.is_canceled)
+      const clientSales = sales.filter(s => s.client_id === clientId && s.payment_method === 'fiado' && !s.is_canceled)
                                .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       
       const allPaymentsSum = mockStore.getFiadoPayments().filter(p => p.client_id === clientId).reduce((acc, curr) => acc + Number(curr.amount), 0);
@@ -842,6 +941,8 @@ export const mockDb = {
         allocated += Number(sale.total_amount);
         if (allPaymentsSum >= allocated) {
           sale.status = 'pago';
+        } else {
+          sale.status = 'pendente';
         }
       }
       

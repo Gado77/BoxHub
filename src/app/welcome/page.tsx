@@ -3,13 +3,18 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, isMockMode, CRM_BRANDING } from '@/lib/supabase';
+import { Profile, Organization } from '@/lib/types';
+
+interface ProfileWithOrg extends Profile {
+  organizations: Organization | null;
+}
 import { Sprout, Lock, AlertCircle, Check, Key, Eye, EyeOff } from 'lucide-react';
 import styles from './welcome.module.css';
 
 export default function WelcomePage() {
   const router = useRouter();
   const [sessionLoading, setSessionLoading] = useState(true);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<ProfileWithOrg | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);

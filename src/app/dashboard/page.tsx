@@ -3,6 +3,16 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase, isMockMode, mockDb, mockStore } from '@/lib/supabase';
+import { Profile, Sale, Client } from '@/lib/types';
+
+interface SaleWithClient extends Sale {
+  clients: { name: string } | null;
+}
+
+interface AIInsight {
+  type: 'warning' | 'danger' | 'success';
+  text: string;
+}
 import { 
   TrendingUp, 
   AlertCircle, 
@@ -15,9 +25,17 @@ import {
   AlertTriangle,
   AlertOctagon
 } from 'lucide-react';
-import NewSaleModal from '@/components/NewSaleModal';
-import SaleDetailModal from '@/components/SaleDetailModal';
+import dynamic from 'next/dynamic';
 import styles from './page.module.css';
+
+const NewSaleModal = dynamic(() => import('@/components/NewSaleModal'), {
+  ssr: false,
+  loading: () => <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}><div className="loading-spinner"></div></div>
+});
+
+const SaleDetailModal = dynamic(() => import('@/components/SaleDetailModal'), {
+  ssr: false
+});
 
 const parseInsightText = (text: string) => {
   // Remove emojis at start like ⚠️, 💸, 📈, ✨
@@ -37,8 +55,8 @@ const parseInsightText = (text: string) => {
 };
 
 export default function DashboardPage() {
-  const [sales, setSales] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+  const [sales, setSales] = useState<SaleWithClient[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [metrics, setMetrics] = useState({
     todayRevenue: 0,
     totalFiado: 0,
@@ -46,20 +64,20 @@ export default function DashboardPage() {
     todaySalesCount: 0
   });
 
-  const [aiInsights, setAiInsights] = useState<any[]>([]);
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
   // Sale detail selection state
-  const [selectedSale, setSelectedSale] = useState<any | null>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [selectedSale, setSelectedSale] = useState<SaleWithClient | null>(null);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
 
   // Load dashboard data
   const loadDashboardData = async () => {
     try {
       // 1. Get current user profile first
-      let userProfile: any = null;
+      let userProfile: Profile | null = null;
       if (isMockMode) {
         userProfile = mockDb.getCurrentUser();
       } else {
@@ -181,13 +199,13 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const handleOpenSaleDetails = (sale: any) => {
+  const handleOpenSaleDetails = (sale: SaleWithClient) => {
     setSelectedSale(sale);
   };
 
   // AI insights generator based on current DB state (highly contextual rules)
-  const generateRuleBasedInsights = (clientsList: any[], salesList: any[]) => {
-    const insights = [];
+  const generateRuleBasedInsights = (clientsList: Client[], salesList: SaleWithClient[]) => {
+    const insights: AIInsight[] = [];
 
     // 1. Identify client not buying in last 10 days
     const now = new Date();
@@ -270,7 +288,7 @@ export default function DashboardPage() {
     setAiInsights(insights.slice(0, 3));
   };
 
-  const fetchAiInsights = async (userProfile?: any, currentClients?: any[], currentSales?: any[]) => {
+  const fetchAiInsights = async (userProfile?: Profile | null, currentClients?: Client[], currentSales?: SaleWithClient[]) => {
     setLoadingInsights(true);
     try {
       const activeUser = (userProfile && typeof userProfile.role === 'string') ? userProfile : currentUser;
