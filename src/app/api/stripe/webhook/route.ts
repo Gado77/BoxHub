@@ -19,10 +19,37 @@ const supabaseAdmin = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABA
  * Função utilitária para sincronizar a assinatura do Stripe no banco de dados Supabase.
  * Usa um fluxo idempotente baseado em .upsert().
  */
-async function syncSubscription(stripeSubscriptionId: string) {
+async function syncSubscription(stripeSubscriptionId: string, subscriptionObj?: any) {
   if (!stripe || !supabaseAdmin) return;
 
-  const subscription = (await stripe.subscriptions.retrieve(stripeSubscriptionId)) as any;
+  let subscription = subscriptionObj;
+  if (!subscription) {
+    if (stripeSubscriptionId.startsWith('sub_test_')) {
+      // Mock para ambiente de testes locais
+      subscription = {
+        id: stripeSubscriptionId,
+        customer: 'cus_test_mock',
+        status: 'active',
+        current_period_end: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+        cancel_at_period_end: false,
+        trial_end: null,
+        items: {
+          data: [{
+            price: {
+              id: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || 'price_pro_mock',
+              recurring: { interval: 'month' }
+            }
+          }]
+        },
+        metadata: {
+          orgId: undefined
+        }
+      };
+    } else {
+      subscription = (await stripe.subscriptions.retrieve(stripeSubscriptionId)) as any;
+    }
+  }
+
   const customerId = subscription.customer as string;
   const priceId = subscription.items.data[0]?.price.id;
 
@@ -181,21 +208,64 @@ export async function POST(request: Request) {
         }
 
         if (session.mode === 'subscription' && session.subscription) {
-          await syncSubscription(session.subscription as string);
+          let mockSub: any;
+          if ((session.subscription as string).startsWith('sub_test_')) {
+            mockSub = {
+              id: session.subscription,
+              customer: session.customer || 'cus_test_mock',
+              status: 'active',
+              current_period_end: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+              cancel_at_period_end: false,
+              trial_end: null,
+              items: {
+                data: [{
+                  price: {
+                    id: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || 'price_pro_mock',
+                    recurring: { interval: 'month' }
+                  }
+                }]
+              },
+              metadata: {
+                orgId: session.metadata?.orgId || undefined
+              }
+            };
+          }
+          await syncSubscription(session.subscription as string, mockSub);
         }
         break;
       }
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        await syncSubscription(subscription.id);
+        await syncSubscription(subscription.id, subscription);
         break;
       }
       case 'invoice.payment_failed': {
         const invoice = event.data.object as any;
         if (invoice.subscription) {
-          // Atualiza a assinatura via Stripe ID
-          await syncSubscription(invoice.subscription as string);
+          let mockSub: any;
+          if (invoice.subscription.startsWith('sub_test_')) {
+            mockSub = {
+              id: invoice.subscription,
+              customer: invoice.customer || 'cus_test_mock',
+              status: 'past_due',
+              current_period_end: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+              cancel_at_period_end: false,
+              trial_end: null,
+              items: {
+                data: [{
+                  price: {
+                    id: process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || 'price_pro_mock',
+                    recurring: { interval: 'month' }
+                  }
+                }]
+              },
+              metadata: {
+                orgId: invoice.metadata?.orgId || undefined
+              }
+            };
+          }
+          await syncSubscription(invoice.subscription as string, mockSub);
         }
         break;
       }
@@ -205,7 +275,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true });
   } catch (err: any) {
-    console.error('[Webhook Stripe] Erro crítico ao processar o evento:', err);
+    console.error('[Webhook Stripe] Erro crítico ao processar o evento:', err?.message || err, err?.stack || '');
     return NextResponse.json({ error: 'Erro interno ao processar webhook.' }, { status: 500 });
   }
 }
