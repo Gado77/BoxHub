@@ -84,7 +84,11 @@ export async function POST(request: Request) {
       }
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    appUrl = appUrl.trim();
+    if (!appUrl.startsWith('http://') && !appUrl.startsWith('https://')) {
+      appUrl = `https://${appUrl}`;
+    }
 
     // 4. Criar a sessão do portal de faturamento (Billing Portal) do Stripe
     const portalSession = await stripe.billingPortal.sessions.create({

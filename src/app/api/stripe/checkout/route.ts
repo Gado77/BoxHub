@@ -178,6 +178,12 @@ export async function POST(request: Request) {
       }
     }
 
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    appUrl = appUrl.trim();
+    if (!appUrl.startsWith('http://') && !appUrl.startsWith('https://')) {
+      appUrl = `https://${appUrl}`;
+    }
+
     const sessionOptions: any = {
       payment_method_types: ['card'],
       line_items: [
@@ -187,8 +193,8 @@ export async function POST(request: Request) {
         },
       ],
       mode: 'subscription',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/configuracoes?canceled=true`,
+      success_url: `${appUrl}/dashboard?success=true`,
+      cancel_url: `${appUrl}/dashboard/configuracoes?canceled=true`,
       subscription_data: {
         metadata: {
           orgId,
