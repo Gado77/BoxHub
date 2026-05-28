@@ -243,7 +243,7 @@ export default function LoginPage() {
         setSuccessMsg('Modo de simulação: E-mail de redefinição enviado com sucesso!');
       } else {
         const { error: recoveryErr } = await supabase!.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
         });
         if (recoveryErr) throw recoveryErr;
         setSuccessMsg('E-mail de redefinição enviado! Verifique sua caixa de entrada.');
