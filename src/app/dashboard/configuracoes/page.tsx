@@ -420,12 +420,18 @@ export default function ConfiguracoesPage() {
         await new Promise(r => setTimeout(r, 500));
         await loadConfigData();
       } else {
-        const { error } = await supabase!
-          .from('profiles')
-          .delete()
-          .eq('id', selectedMember.id);
+        const res = await fetch('/api/team/remove', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ memberId: selectedMember.id }),
+        });
 
-        if (error) throw error;
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Erro ao remover membro da equipe.');
+        }
         await loadConfigData();
       }
 
@@ -1173,35 +1179,72 @@ export default function ConfiguracoesPage() {
                     </div>
 
                     <div className={styles.memberActions}>
-                      {isUserAdmin && (
-                        <>
-                          <button 
-                            className={styles.actionBtn} 
-                            title="Editar Cargo/Nome"
-                            onClick={() => {
-                              setSelectedMember(member);
-                              setEditMemberName(member.name);
-                              setEditMemberRole(member.role);
-                              setIsEditModalOpen(true);
-                            }}
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          
-                          {!isSelf && (
-                            <button 
-                              className={`${styles.actionBtn} ${styles.actionBtnDelete}`} 
-                              title="Remover da Equipe"
-                              onClick={() => {
-                                setSelectedMember(member);
-                                setIsDeleteModalOpen(true);
-                              }}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          )}
-                        </>
-                      )}
+                      {isUserAdmin && (() => {
+                        const oldestProfile = team.length > 0 ? team.reduce((oldest, current) => {
+                          if (!oldest.created_at) return current;
+                          if (!current.created_at) return oldest;
+                          return new Date(current.created_at) < new Date(oldest.created_at) ? current : oldest;
+                        }, team[0]) : null;
+                        
+                        const isMemberOwner = oldestProfile && member.id === oldestProfile.id;
+                        const isCallerOwner = oldestProfile && currentUser?.id === oldestProfile.id;
+                        const isCallerSuperAdmin = currentUser?.role === 'superadmin';
+
+                        // Permissões de Edição:
+                        // - Sempre pode editar a si mesmo
+                        // - Se for editar outra pessoa:
+                        //   - Não pode editar o Dono Principal (exceto superadmin)
+                        //   - Se o alvo for Admin, apenas o Dono Principal (ou superadmin) pode editar
+                        let canEdit = isSelf;
+                        if (!isSelf) {
+                          if (!isMemberOwner) {
+                            if (member.role !== 'admin' || isCallerOwner || isCallerSuperAdmin) {
+                              canEdit = true;
+                            }
+                          }
+                        }
+
+                        // Permissões de Exclusão:
+                        // - Nunca pode deletar a si mesmo nesta lista
+                        // - Não pode deletar o Dono Principal
+                        // - Se o alvo for Admin, apenas o Dono Principal (ou superadmin) pode deletar
+                        let canDelete = !isSelf && !isMemberOwner;
+                        if (canDelete && member.role === 'admin') {
+                          canDelete = isCallerOwner || isCallerSuperAdmin;
+                        }
+
+                        return (
+                          <>
+                            {canEdit && (
+                              <button 
+                                className={styles.actionBtn} 
+                                title="Editar Cargo/Nome"
+                                onClick={() => {
+                                  setSelectedMember(member);
+                                  setEditMemberName(member.name);
+                                  setEditMemberRole(member.role);
+                                  setIsEditModalOpen(true);
+                                }}
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            )}
+                            
+                            {canDelete && (
+                              <button 
+                                className={`${styles.actionBtn} ${styles.actionBtnDelete}`} 
+                                title="Remover da Equipe"
+                                onClick={() => {
+                                  setSelectedMember(member);
+                                  setIsDeleteModalOpen(true);
+                                }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 );

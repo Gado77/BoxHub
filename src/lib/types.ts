@@ -24,6 +24,7 @@ export interface Profile {
   role: 'admin' | 'vendedor' | 'superadmin';
   avatar_url?: string | null;
   email?: string;
+  created_at?: string;
 }
 
 export interface Client {

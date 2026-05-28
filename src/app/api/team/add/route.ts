@@ -124,6 +124,39 @@ export async function POST(request: Request) {
     }
 
 
+    // Limpar usuário órfão se existir no Auth mas não no profiles
+    try {
+      const { data: { users: authUsers }, error: listUsersError } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000
+      });
+
+      if (!listUsersError && authUsers) {
+        const existingAuthUser = authUsers.find(u => u.email?.toLowerCase() === email.toLowerCase());
+        if (existingAuthUser) {
+          // Verificar se esse usuário tem perfil correspondente no banco
+          const { data: existingProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', existingAuthUser.id)
+            .maybeSingle();
+
+          if (!existingProfile) {
+            // Usuário existe no Auth mas NÃO tem perfil (estado órfão)
+            // Deletamos para poder criar um convite novo limpo
+            await supabaseAdmin.auth.admin.deleteUser(existingAuthUser.id);
+          } else {
+            // Usuário já está ativo e possui perfil
+            return NextResponse.json({ 
+              error: 'Este e-mail já está cadastrado em uma conta ativa.' 
+            }, { status: 400 });
+          }
+        }
+      }
+    } catch (cleanErr) {
+      console.warn('Erro ao limpar usuário órfão antes do convite:', cleanErr);
+    }
+
     const requestUrl = new URL(request.url);
     const origin = process.env.NEXT_PUBLIC_APP_URL || requestUrl.origin;
 
