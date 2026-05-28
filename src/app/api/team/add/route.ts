@@ -162,7 +162,7 @@ export async function POST(request: Request) {
 
     // Criar o usuário no Supabase Auth por meio do convite
     const { data: authData, error: authErrorInvite } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${origin}/welcome`,
+      redirectTo: `${origin}/auth/callback?next=/welcome`,
       data: {
         full_name: name
       }
