@@ -38,6 +38,9 @@ export default function LoginPage() {
 
   // Check if already logged in (redirect to dashboard)
   useEffect(() => {
+    let active = true;
+    let unsubscribeFn: (() => void) | undefined;
+
     const checkUser = async () => {
       if (isMockMode) {
         // If mock user set, go to dashboard
@@ -55,8 +58,9 @@ export default function LoginPage() {
           isInvite = hash.includes('type=invite') || search.includes('type=invite') || hash.includes('type=signup') || search.includes('type=signup');
         }
 
+        // 1. Check current session immediately
         const { data } = await supabase!.auth.getSession();
-        if (data.session) {
+        if (data.session && active) {
           if (isRecovery) {
             router.push('/reset-password');
           } else if (isInvite) {
@@ -64,10 +68,32 @@ export default function LoginPage() {
           } else {
             router.push('/dashboard');
           }
+          return;
         }
+
+        // 2. Set up listener to catch session after async code exchange/hash parsing
+        const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
+          if (session && active) {
+            if (isRecovery) {
+              router.push('/reset-password');
+            } else if (isInvite) {
+              router.push('/welcome');
+            } else {
+              router.push('/dashboard');
+            }
+            if (unsubscribeFn) unsubscribeFn();
+          }
+        });
+        
+        unsubscribeFn = () => subscription.unsubscribe();
       }
     };
     checkUser();
+
+    return () => {
+      active = false;
+      if (unsubscribeFn) unsubscribeFn();
+    };
   }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
