@@ -11,6 +11,8 @@ interface ProfileWithOrg extends Profile {
 import { Sprout, Lock, AlertCircle, Check, Key, Eye, EyeOff } from 'lucide-react';
 import styles from './welcome.module.css';
 
+let exchangeCache: { code: string; promise: Promise<any> } | null = null;
+
 export default function WelcomePage() {
   const router = useRouter();
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -68,13 +70,20 @@ export default function WelcomePage() {
       }
 
       if (code) {
+        if (!exchangeCache || exchangeCache.code !== code) {
+          exchangeCache = {
+            code,
+            promise: supabase!.auth.exchangeCodeForSession(code)
+          };
+        }
+
         try {
-          const { data, error: exchangeErr } = await supabase!.auth.exchangeCodeForSession(code);
+          const { data, error: exchangeErr } = await exchangeCache.promise;
           if (exchangeErr) throw exchangeErr;
           
           if (active && data.session) {
             await loadUserProfile(data.session.user.id);
-          } else {
+          } else if (active) {
             throw new Error('Sessão não pôde ser estabelecida.');
           }
           return;
@@ -84,6 +93,7 @@ export default function WelcomePage() {
             setError('Link de convite inválido, expirado ou já utilizado. Por favor, solicite um novo convite ao administrador.');
             setSessionLoading(false);
           }
+          exchangeCache = null;
           return;
         }
       }
