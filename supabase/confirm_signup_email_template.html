@@ -138,12 +138,12 @@
         </div>
 
         <div class="cta-area">
-          <a href="{{ .ConfirmationURL }}" class="cta-button" target="_blank">Confirmar E-mail</a>
+          <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup&next=/onboarding" class="cta-button" target="_blank">Confirmar E-mail</a>
         </div>
 
         <div class="link-fallback">
           Se o botão acima não funcionar, copie e cole o link a seguir no seu navegador:<br>
-          <a href="{{ .ConfirmationURL }}" target="_blank">{{ .ConfirmationURL }}</a>
+          <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup&next=/onboarding" target="_blank">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup&next=/onboarding</a>
         </div>
       </div>
       

@@ -140,12 +140,12 @@
         </div>
 
         <div class="cta-area">
-          <a href="{{ .ConfirmationURL }}" class="cta-button" target="_blank">Aceitar Convite e Ativar Conta</a>
+          <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite&next=/welcome" class="cta-button" target="_blank">Aceitar Convite e Ativar Conta</a>
         </div>
 
         <div class="link-fallback">
           Se o botão acima não funcionar, copie e cole o link a seguir no seu navegador:<br>
-          <a href="{{ .ConfirmationURL }}" target="_blank">{{ .ConfirmationURL }}</a>
+          <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite&next=/welcome" target="_blank">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite&next=/welcome</a>
         </div>
       </div>
       
