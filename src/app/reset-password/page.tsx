@@ -27,74 +27,82 @@ export default function ResetPasswordPage() {
     let timer: NodeJS.Timeout | undefined;
 
     const checkSession = async () => {
-      if (isMockMode) {
-        setError('O modo de demonstração local está ativo. Para testar a redefinição de senha real, configure o Supabase.');
-        setSessionLoading(false);
-        return;
-      }
-
-      // Check if there is a 'code' parameter in the URL (PKCE flow redirect)
-      let code: string | null = null;
-      if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search);
-        code = urlParams.get('code');
-      }
-
-      if (code) {
-        if (!exchangeCache || exchangeCache.code !== code) {
-          exchangeCache = {
-            code,
-            promise: supabase!.auth.exchangeCodeForSession(code)
-          };
+      try {
+        if (isMockMode) {
+          setError('O modo de demonstração local está ativo. Para testar a redefinição de senha real, configure o Supabase.');
+          setSessionLoading(false);
+          return;
         }
 
-        try {
-          const { data, error: exchangeErr } = await exchangeCache.promise;
-          if (exchangeErr) throw exchangeErr;
-          
-          if (active && data.session) {
-            setSessionLoading(false);
-          } else if (active) {
-            throw new Error('Sessão não pôde ser estabelecida.');
+        // Check if there is a 'code' parameter in the URL (PKCE flow redirect)
+        let code: string | null = null;
+        if (typeof window !== 'undefined') {
+          const urlParams = new URLSearchParams(window.location.search);
+          code = urlParams.get('code');
+        }
+
+        if (code) {
+          if (!exchangeCache || exchangeCache.code !== code) {
+            exchangeCache = {
+              code,
+              promise: supabase!.auth.exchangeCodeForSession(code)
+            };
           }
+
+          try {
+            const { data, error: exchangeErr } = await exchangeCache.promise;
+            if (exchangeErr) throw exchangeErr;
+            
+            if (active && data.session) {
+              setSessionLoading(false);
+            } else if (active) {
+              throw new Error('Sessão não pôde ser estabelecida.');
+            }
+            return;
+          } catch (err: any) {
+            console.error('Error exchanging code for session:', err);
+            if (active) {
+              setError('Link de redefinição inválido, expirado ou já utilizado. Por favor, solicite uma nova redefinição na tela de login.');
+              setSessionLoading(false);
+            }
+            exchangeCache = null;
+            return;
+          }
+        }
+
+        // Check if session is already active (loaded from cookie/localSession)
+        const { data: { session: currentSession } } = await supabase!.auth.getSession();
+        if (currentSession) {
+          if (active) setSessionLoading(false);
           return;
-        } catch (err: any) {
-          console.error('Error exchanging code for session:', err);
+        }
+
+        // Listen for auth state change (Supabase parses access_token from the URL hash)
+        const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
+          if (session && active) {
+            if (timer) clearTimeout(timer);
+            setSessionLoading(false);
+            if (unsubscribeFn) unsubscribeFn();
+          }
+        });
+        
+        unsubscribeFn = () => subscription.unsubscribe();
+
+        // Fallback timeout in case the hash token is invalid, expired, or missing
+        timer = setTimeout(() => {
           if (active) {
             setError('Link de redefinição inválido, expirado ou já utilizado. Por favor, solicite uma nova redefinição na tela de login.');
             setSessionLoading(false);
+            if (unsubscribeFn) unsubscribeFn();
           }
-          exchangeCache = null;
-          return;
-        }
-      }
-
-      // Check if session is already active (loaded from cookie/localSession)
-      const { data: { session: currentSession } } = await supabase!.auth.getSession();
-      if (currentSession) {
-        if (active) setSessionLoading(false);
-        return;
-      }
-
-      // Listen for auth state change (Supabase parses access_token from the URL hash)
-      const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
-        if (session && active) {
-          if (timer) clearTimeout(timer);
-          setSessionLoading(false);
-          if (unsubscribeFn) unsubscribeFn();
-        }
-      });
-      
-      unsubscribeFn = () => subscription.unsubscribe();
-
-      // Fallback timeout in case the hash token is invalid, expired, or missing
-      timer = setTimeout(() => {
+        }, 5000);
+      } catch (err: any) {
+        console.error('Error in checkSession:', err);
         if (active) {
-          setError('Link de redefinição inválido, expirado ou já utilizado. Por favor, solicite uma nova redefinição na tela de login.');
+          setError('Ocorreu um erro ao carregar a sessão. Por favor, solicite uma nova redefinição na tela de login.');
           setSessionLoading(false);
-          if (unsubscribeFn) unsubscribeFn();
         }
-      }, 5000);
+      }
     };
 
     checkSession();
