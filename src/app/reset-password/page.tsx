@@ -31,6 +31,34 @@ export default function ResetPasswordPage() {
         return;
       }
 
+      // Check if there is a 'code' parameter in the URL (PKCE flow redirect)
+      let code: string | null = null;
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        code = urlParams.get('code');
+      }
+
+      if (code) {
+        try {
+          const { data, error: exchangeErr } = await supabase!.auth.exchangeCodeForSession(code);
+          if (exchangeErr) throw exchangeErr;
+          
+          if (active && data.session) {
+            setSessionLoading(false);
+          } else {
+            throw new Error('Sessão não pôde ser estabelecida.');
+          }
+          return;
+        } catch (err: any) {
+          console.error('Error exchanging code for session:', err);
+          if (active) {
+            setError('Link de redefinição inválido, expirado ou já utilizado. Por favor, solicite uma nova redefinição na tela de login.');
+            setSessionLoading(false);
+          }
+          return;
+        }
+      }
+
       // Check if session is already active (loaded from cookie/localSession)
       const { data: { session: currentSession } } = await supabase!.auth.getSession();
       if (currentSession) {
@@ -41,6 +69,7 @@ export default function ResetPasswordPage() {
       // Listen for auth state change (Supabase parses access_token from the URL hash)
       const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
         if (session && active) {
+          if (timer) clearTimeout(timer);
           setSessionLoading(false);
           if (unsubscribeFn) unsubscribeFn();
         }

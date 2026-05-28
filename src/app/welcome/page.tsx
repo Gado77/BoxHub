@@ -60,16 +60,48 @@ export default function WelcomePage() {
         return;
       }
 
+      // Check if there is a 'code' parameter in the URL (PKCE flow redirect)
+      let code: string | null = null;
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        code = urlParams.get('code');
+      }
+
+      if (code) {
+        try {
+          const { data, error: exchangeErr } = await supabase!.auth.exchangeCodeForSession(code);
+          if (exchangeErr) throw exchangeErr;
+          
+          if (active && data.session) {
+            await loadUserProfile(data.session.user.id);
+          } else {
+            throw new Error('Sessão não pôde ser estabelecida.');
+          }
+          return;
+        } catch (err: any) {
+          console.error('Error exchanging code for session:', err);
+          if (active) {
+            setError('Link de convite inválido, expirado ou já utilizado. Por favor, solicite um novo convite ao administrador.');
+            setSessionLoading(false);
+          }
+          return;
+        }
+      }
+
       // Check current session
       const { data: { session: currentSession } } = await supabase!.auth.getSession();
       if (currentSession) {
-        if (active) await loadUserProfile(currentSession.user.id);
+        if (active) {
+          if (timer) clearTimeout(timer);
+          await loadUserProfile(currentSession.user.id);
+        }
         return;
       }
 
       // Set up onAuthStateChange listener
       const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
         if (session && active) {
+          if (timer) clearTimeout(timer);
           await loadUserProfile(session.user.id);
           if (unsubscribeFn) unsubscribeFn();
         }
