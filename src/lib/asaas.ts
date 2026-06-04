@@ -81,6 +81,17 @@ export const asaas = {
   },
 
   /**
+   * Atualiza um cliente no Asaas
+   */
+  async updateCustomer(id: string, params: { name?: string; email?: string; cpfCnpj?: string }): Promise<AsaasCustomer> {
+    console.log(`[Asaas] Atualizando cliente: ${id}`);
+    return asaasFetch<AsaasCustomer>(`/customers/${id}`, {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  },
+
+  /**
    * Busca um cliente pelo email ou externalReference
    */
   async findCustomerByEmail(email: string): Promise<AsaasCustomer | null> {

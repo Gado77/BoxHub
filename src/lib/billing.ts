@@ -126,6 +126,17 @@ export class AsaasBillingProvider implements BillingProvider {
     cycle: 'monthly' | 'annual',
     trialEndsAt?: string | null
   ): Promise<{ url: string; subscriptionId: string }> {
+    // Se for sandbox, garante que o cliente correspondente tenha um CPF/CNPJ de testes preenchido
+    const isSandbox = (process.env.ASAAS_API_URL || '').includes('sandbox') || (process.env.ASAAS_API_KEY || '').includes('hmlg');
+    if (isSandbox) {
+      try {
+        await asaas.updateCustomer(customerId, { cpfCnpj: '00000000000191' });
+        console.log(`[Asaas Billing] CNPJ de sandbox garantido/atualizado para o cliente: ${customerId}`);
+      } catch (e: any) {
+        console.warn(`[Asaas Billing] Não foi possível atualizar o CPF/CNPJ para o cliente ${customerId}:`, e.message);
+      }
+    }
+
     // Mapeamento dos valores de faturamento do BoxHub
     let value = 297; // Default: Pro mensal
     if (plan === 'basic') {
