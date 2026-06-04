@@ -9,7 +9,8 @@ import {
   SaleItem, 
   FiadoPayment, 
   OrgSettings,
-  Subscription
+  Subscription,
+  Notification
 } from './types';
 
 export const DEFAULT_ORG_ID = 'org-ceagesp-123';
@@ -20,6 +21,7 @@ const initialMockOrgs: Organization[] = [
     id: DEFAULT_ORG_ID,
     name: 'Frutas Prime CEAGESP',
     stripe_customer_id: 'cus_mock123',
+    asaas_customer_id: null,
     subscription_status: 'trial',
     settings: { estoque_ativo: true },
   },
@@ -27,6 +29,7 @@ const initialMockOrgs: Organization[] = [
     id: 'org-system-admin',
     name: 'BoxHub Global',
     stripe_customer_id: null,
+    asaas_customer_id: null,
     subscription_status: 'active',
     settings: { estoque_ativo: false },
   }
@@ -39,6 +42,9 @@ const initialMockSubscriptions: Subscription[] = [
     stripe_customer_id: 'cus_mock123',
     stripe_subscription_id: 'sub_mock123',
     stripe_price_id: 'price_pro_mock',
+    asaas_customer_id: null,
+    asaas_subscription_id: null,
+    billing_provider: 'stripe',
     plan: 'pro',
     billing_cycle: 'monthly',
     status: 'trialing',
@@ -54,6 +60,9 @@ const initialMockSubscriptions: Subscription[] = [
     stripe_customer_id: null,
     stripe_subscription_id: null,
     stripe_price_id: null,
+    asaas_customer_id: null,
+    asaas_subscription_id: null,
+    billing_provider: 'stripe',
     plan: 'enterprise',
     billing_cycle: 'monthly',
     status: 'active',
@@ -406,6 +415,104 @@ const initialMockSaleItems: SaleItem[] = [
 const initialMockFiadoPayments: FiadoPayment[] = [];
 const initialMockAuditLogs: any[] = [];
 
+const initialMockNotifications: Notification[] = [
+  {
+    id: 'notif-1',
+    organization_id: DEFAULT_ORG_ID,
+    user_id: null,
+    title: '⚠️ Limite de fiado atingido',
+    message: 'O cliente João da Quitanda atingiu 90% do seu limite de fiado disponível.',
+    description: 'João da Quitanda possui um débito atual de R$ 1.350,00 de um limite de R$ 1.500,00. Considere renegociar ou amortizar o valor.',
+    type: 'fiado',
+    priority: 'high',
+    source: 'system',
+    status: 'unread',
+    is_pinned: false,
+    action_url: '/dashboard/fiado',
+    action_label: 'Ver Gestão de Fiado',
+    metadata: { client_id: 'cli-1' },
+    read_at: null,
+    created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'notif-2',
+    organization_id: DEFAULT_ORG_ID,
+    user_id: DEFAULT_USER_ID,
+    title: '🚨 Assinatura expirando em breve',
+    message: 'Seu período de testes (Trial) do BoxHub Pro expira em 3 dias.',
+    description: 'Evite interrupções no acesso aos relatórios e ao controle financeiro avançado cadastrando um cartão de crédito.',
+    type: 'billing',
+    priority: 'critical',
+    source: 'billing',
+    status: 'unread',
+    is_pinned: true,
+    action_url: '/dashboard/planos',
+    action_label: 'Adicionar Cartão',
+    metadata: {},
+    read_at: null,
+    created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'notif-3',
+    organization_id: DEFAULT_ORG_ID,
+    user_id: null,
+    title: '📦 Estoque baixo detectado',
+    message: 'O produto Goiaba está com apenas 8 caixas restantes no estoque.',
+    description: 'O estoque de Goiaba caiu abaixo do limite de segurança recomendado de 15 caixas.',
+    type: 'stock',
+    priority: 'medium',
+    source: 'system',
+    status: 'unread',
+    is_pinned: false,
+    action_url: '/dashboard/produtos',
+    action_label: 'Ver Produtos',
+    metadata: { product_id: 'prod-2' },
+    read_at: null,
+    created_at: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'notif-4',
+    organization_id: DEFAULT_ORG_ID,
+    user_id: 'usr-seller-789',
+    title: '💰 Nova venda registrada',
+    message: 'Carlos Vendedor registrou a venda #393 no valor de R$ 680,00.',
+    description: 'Método de pagamento: Fiado. Cliente: Mercado Estrela.',
+    type: 'sales',
+    priority: 'low',
+    source: 'system',
+    status: 'read',
+    is_pinned: false,
+    action_url: '/dashboard/vendas',
+    action_label: 'Ver Vendas',
+    metadata: { sale_id: 'sale-3' },
+    read_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
+    created_at: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'notif-5',
+    organization_id: DEFAULT_ORG_ID,
+    user_id: null,
+    title: '✨ Bem-vindo ao Módulo de Notificações!',
+    message: 'Agora você receberá alertas sobre fiado, estoque, cobrança e insights aqui.',
+    description: 'Nesta central você pode acompanhar tudo o que acontece no seu box em tempo real.',
+    type: 'system',
+    priority: 'positive',
+    source: 'system',
+    status: 'read',
+    is_pinned: false,
+    action_url: null,
+    action_label: null,
+    metadata: {},
+    read_at: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
+    created_at: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
+  }
+];
+
 const getLocalData = <T>(key: string, defaultValue: T): T => {
   if (typeof window === 'undefined') return JSON.parse(JSON.stringify(defaultValue));
   const stored = localStorage.getItem(`boxhub_mock_${key}`);
@@ -437,6 +544,7 @@ export const mockStore = {
   getFiadoPayments: () => getLocalData('fiado_payments', initialMockFiadoPayments),
   getSubscriptions: () => getLocalData('subscriptions', initialMockSubscriptions),
   getAuditLogs: () => getLocalData('audit_logs', initialMockAuditLogs),
+  getNotifications: () => getLocalData('notifications', initialMockNotifications),
   
   saveClients: (clients: Client[]) => setLocalData('clients', clients),
   saveProducts: (products: Product[]) => setLocalData('products', products),
@@ -449,10 +557,11 @@ export const mockStore = {
   saveProfiles: (profiles: Profile[]) => setLocalData('profiles', profiles),
   saveSubscriptions: (subscriptions: Subscription[]) => setLocalData('subscriptions', subscriptions),
   saveAuditLogs: (logs: any[]) => setLocalData('audit_logs', logs),
+  saveNotifications: (notifications: Notification[]) => setLocalData('notifications', notifications),
 
   resetAll: () => {
     if (typeof window === 'undefined') return;
-    const keys = ['orgs', 'profiles', 'clients', 'products', 'variants', 'stock_movements', 'sales', 'sale_items', 'fiado_payments', 'subscriptions', 'audit_logs'];
+    const keys = ['orgs', 'profiles', 'clients', 'products', 'variants', 'stock_movements', 'sales', 'sale_items', 'fiado_payments', 'subscriptions', 'audit_logs', 'notifications'];
     keys.forEach(k => localStorage.removeItem(`boxhub_mock_${k}`));
     localStorage.removeItem('boxhub_current_user_id');
     window.location.reload();
@@ -519,6 +628,9 @@ export const mockDb = {
           stripe_customer_id: 'cus_mock123',
           stripe_subscription_id: 'sub_mock123',
           stripe_price_id: 'price_pro_mock',
+          asaas_customer_id: null,
+          asaas_subscription_id: null,
+          billing_provider: 'stripe',
           plan: 'pro',
           billing_cycle: 'monthly',
           status: 'trialing',
@@ -573,6 +685,9 @@ export const mockDb = {
         stripe_customer_id: 'cus_mock_' + Math.random().toString(36).substring(7),
         stripe_subscription_id: 'sub_mock_' + Math.random().toString(36).substring(7),
         stripe_price_id: 'price_pro_mock',
+        asaas_customer_id: null,
+        asaas_subscription_id: null,
+        billing_provider: 'stripe',
         plan: 'pro',
         billing_cycle: 'monthly',
         status: 'trialing',
@@ -1085,6 +1200,89 @@ export const mockDb = {
       });
 
       return newPayment;
+    }
+  },
+
+  notifications: {
+    list: () => {
+      const all = mockStore.getNotifications();
+      const org = mockDb.getOrg();
+      const user = mockDb.getCurrentUser();
+      
+      let filtered = all.filter(n => n.organization_id === org.id);
+      
+      if (user.role === 'vendedor') {
+        filtered = filtered.filter(n => n.user_id === null || n.user_id === user.id);
+      }
+      
+      return filtered.sort((a, b) => {
+        if (a.is_pinned && !b.is_pinned) return -1;
+        if (!a.is_pinned && b.is_pinned) return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+    },
+    markAsRead: (id: string) => {
+      const all = mockStore.getNotifications();
+      const idx = all.findIndex(n => n.id === id);
+      if (idx !== -1) {
+        all[idx].status = 'read';
+        all[idx].read_at = new Date().toISOString();
+        all[idx].updated_at = new Date().toISOString();
+        mockStore.saveNotifications(all);
+        return all[idx];
+      }
+      return null;
+    },
+    markAllAsRead: () => {
+      const all = mockStore.getNotifications();
+      const org = mockDb.getOrg();
+      const user = mockDb.getCurrentUser();
+      
+      const updated = all.map(n => {
+        if (n.organization_id === org.id && n.status === 'unread') {
+          const isVendedorAndCanRead = user.role === 'vendedor' && (n.user_id === null || n.user_id === user.id);
+          const isAdmin = user.role === 'admin' || user.role === 'superadmin';
+          
+          if (isAdmin || isVendedorAndCanRead) {
+            return {
+              ...n,
+              status: 'read' as const,
+              read_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+          }
+        }
+        return n;
+      });
+      
+      mockStore.saveNotifications(updated);
+      return true;
+    },
+    insert: (title: string, message: string, options?: Partial<Notification>) => {
+      const all = mockStore.getNotifications();
+      const org = mockDb.getOrg();
+      const newNotif: Notification = {
+        id: `notif-${Date.now()}-${Math.random().toString(36).substring(4)}`,
+        organization_id: org.id,
+        user_id: options?.user_id || null,
+        title,
+        message,
+        description: options?.description || null,
+        type: options?.type || 'system',
+        priority: (options?.priority as any) || 'medium',
+        source: (options?.source as any) || 'system',
+        status: 'unread',
+        is_pinned: options?.is_pinned || false,
+        action_url: options?.action_url || null,
+        action_label: options?.action_label || null,
+        metadata: options?.metadata || {},
+        read_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      all.push(newNotif);
+      mockStore.saveNotifications(all);
+      return newNotif;
     }
   }
 };

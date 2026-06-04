@@ -71,9 +71,9 @@ export default function TermosPage() {
             O BoxHub opera no modelo de assinatura mensal ou anual recorrente:
           </p>
           <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.6', fontSize: '0.95rem', color: '#d1d5db' }}>
-            <li><strong>Período de Teste (Trial):</strong> Oferecemos 7 dias de avaliação gratuita no Plano Pro. Após este prazo, as funções premium são suspensas até que a cobrança seja configurada via Stripe.</li>
+            <li><strong>Período de Teste (Trial):</strong> Oferecemos 7 dias de avaliação gratuita no Plano Pro. Após este prazo, as funções premium são suspensas até que a cobrança seja configurada.</li>
             <li><strong>Upgrades e Downgrades:</strong> Mudanças de plano refletem proporcionalmente no faturamento imediato. Em caso de downgrade, os limites de equipe e recursos serão ajustados de forma segura, preservando os dados já criados mas limitando novas inserções.</li>
-            <li><strong>Cancelamentos:</strong> Podem ser solicitados a qualquer momento pelo administrador através do portal de faturamento do Stripe disponível no painel de configurações. Não há taxas de fidelidade ou multas de rescisão.</li>
+            <li><strong>Cancelamentos:</strong> Podem ser solicitados a qualquer momento pelo administrador através do portal de faturamento disponível no painel de configurações. Não há taxas de fidelidade ou multas de rescisão.</li>
           </ul>
         </section>
 

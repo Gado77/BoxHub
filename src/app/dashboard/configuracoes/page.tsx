@@ -476,7 +476,9 @@ export default function ConfiguracoesPage() {
         });
         await loadConfigData();
       } else {
-        const res = await fetch('/api/stripe/customer-portal', {
+        const provider = process.env.NEXT_PUBLIC_BILLING_PROVIDER || 'stripe';
+        const endpoint = provider === 'asaas' ? '/api/asaas/customer-portal' : '/api/stripe/customer-portal';
+        const res = await fetch(endpoint, {
           method: 'POST',
         });
 
@@ -492,7 +494,7 @@ export default function ConfiguracoesPage() {
         }
       }
     } catch (err: any) {
-      console.error('Erro ao acessar portal Stripe:', err);
+      console.error('Erro ao acessar portal de faturamento:', err);
       setSaveError(err.message || 'Erro ao carregar configurações de pagamento.');
     } finally {
       setActionLoading(null);
@@ -977,6 +979,12 @@ export default function ConfiguracoesPage() {
           
           {/* Card: Billing (Discreet Card) */}
           {isUserAdmin && (() => {
+            const provider = process.env.NEXT_PUBLIC_BILLING_PROVIDER || 'stripe';
+            const isAsaas = provider === 'asaas';
+            const hasActiveBillingForProvider = isAsaas 
+              ? !!subscription?.asaas_customer_id 
+              : !!subscription?.stripe_customer_id;
+
             const trialDaysLeft = getTrialDaysRemaining();
             const isTrialActive = subscription 
               ? (subscription.status === 'trialing' && trialDaysLeft > 0) 
@@ -988,11 +996,15 @@ export default function ConfiguracoesPage() {
               ? `${subscription.plan === 'pro' ? 'Plano Pro' : subscription.plan === 'enterprise' ? 'Plano Enterprise' : 'Plano Básico'} (${billingCycleText})` 
               : (isTrialActive ? 'Plano Pro (Trial - Mensal)' : 'Sem plano ativo');
             
-            const statusLabel = subscription 
+            const statusLabel = isAsaas && subscription?.stripe_customer_id && !subscription?.asaas_customer_id
+              ? 'Migração Requerida'
+              : subscription 
               ? (subscription.status === 'active' ? 'Assinatura Ativa' : subscription.status === 'trialing' ? 'Período de Testes' : `Assinatura ${subscription.status}`)
               : (isTrialActive ? 'Período de Testes' : 'Faturamento Pendente');
             
-            const badgeClass = subscription?.status === 'active' 
+            const badgeClass = isAsaas && subscription?.stripe_customer_id && !subscription?.asaas_customer_id
+              ? 'badge-warning'
+              : subscription?.status === 'active' 
               ? 'badge-success' 
               : (isTrialActive ? 'badge-warning' : 'badge-danger');
             
@@ -1007,10 +1019,12 @@ export default function ConfiguracoesPage() {
               priceVal = '297';
             }
             
-            const descText = isTrialActive 
+            const descText = isAsaas && subscription?.stripe_customer_id && !subscription?.asaas_customer_id
+              ? 'Sua assinatura anterior foi criada no Stripe. Para continuar, ative a cobrança via Asaas.'
+              : isTrialActive 
               ? `Você está testando os recursos do BoxHub gratuitamente no período de testes. Restam ${trialDaysLeft} dias de teste.` 
-              : subscription?.status === 'active' 
-              ? 'Sua conta está ativa e regularizada com faturamento via Stripe. Acesso total a recursos ilimitados.' 
+              : (subscription?.status === 'active' && hasActiveBillingForProvider)
+              ? 'Sua conta está ativa e regularizada com faturamento ativo. Acesso total a recursos ilimitados.' 
               : `Sua assinatura está ${subscription?.status || 'inativa'}. Regularize ou escolha um plano de faturamento.`;
 
             return (
@@ -1026,7 +1040,7 @@ export default function ConfiguracoesPage() {
                   <div className={styles.billingInfo}>
                     <div className={styles.billingHeader}>
                       <div className={styles.planStatus}>
-                        <Crown size={16} style={{ color: subscription?.status === 'active' || isTrialActive ? 'var(--warning)' : 'var(--text-muted)' }} />
+                        <Crown size={16} style={{ color: (subscription?.status === 'active' && hasActiveBillingForProvider) || isTrialActive ? 'var(--warning)' : 'var(--text-muted)' }} />
                         <span className={styles.planNameLabel}>{planName}</span>
                       </div>
                       <span className={`badge ${badgeClass}`}>{statusLabel}</span>
@@ -1042,7 +1056,7 @@ export default function ConfiguracoesPage() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem', width: '100%' }}>
-                    {subscription && ['active', 'past_due', 'unpaid'].includes(subscription.status) && (
+                    {subscription && ['active', 'past_due', 'unpaid'].includes(subscription.status) && hasActiveBillingForProvider && (
                       <button 
                         onClick={handleManageBilling} 
                         className="btn-primary" 
@@ -1054,19 +1068,32 @@ export default function ConfiguracoesPage() {
                         ) : (
                           <>
                             <CreditCard size={14} />
-                            <span>Gerenciar Assinatura (Stripe)</span>
+                             <span>Gerenciar Assinatura</span>
                           </>
                         )}
                       </button>
                     )}
                     
-                    <button 
-                      onClick={handleBillingAction} 
-                      className={subscription?.status === 'active' ? "btn-secondary" : "btn-primary"} 
-                      style={{ width: '100%', fontSize: '0.85rem', justifyContent: 'center' }}
-                    >
-                      Ver Planos e Preços
-                    </button>
+                    {subscription && isAsaas && subscription.stripe_customer_id && !subscription.asaas_customer_id && (
+                      <button 
+                        onClick={handleBillingAction} 
+                        className="btn-primary" 
+                        style={{ width: '100%', fontSize: '0.85rem', justifyContent: 'center' }}
+                      >
+                        <CreditCard size={14} />
+                        <span>Ativar cobrança Asaas</span>
+                      </button>
+                    )}
+                    
+                    {(!isAsaas || !subscription?.stripe_customer_id || subscription?.asaas_customer_id) && (
+                      <button 
+                        onClick={handleBillingAction} 
+                        className={subscription?.status === 'active' && hasActiveBillingForProvider ? "btn-secondary" : "btn-primary"} 
+                        style={{ width: '100%', fontSize: '0.85rem', justifyContent: 'center' }}
+                      >
+                        Ver Planos e Preços
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1534,7 +1561,7 @@ export default function ConfiguracoesPage() {
             </li>
           </ul>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-            Transição rápida e segura pelo Stripe. Seus dados existentes estão 100% protegidos.
+            Transição rápida e segura. Seus dados existentes estão 100% protegidos.
           </p>
         </div>
 

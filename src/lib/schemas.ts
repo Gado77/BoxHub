@@ -100,3 +100,30 @@ export const saleSchema = z.object({
     .array(saleItemSchema)
     .min(1, 'A venda precisa conter pelo menos um item.'),
 });
+
+// Schema para atualização de status de notificação
+export const updateNotificationStatusSchema = z.object({
+  id: z.string().uuid('ID de notificação inválido.').optional(),
+  status: z.enum(['unread', 'read', 'archived'], {
+    message: 'Status inválido.',
+  }).default('read'),
+});
+
+// Schema para inserção de notificação de teste
+export const testNotificationSchema = z.object({
+  title: z.string().min(1, 'O título é obrigatório.').max(150, 'O título deve ter no máximo 150 caracteres.'),
+  message: z.string().min(1, 'A mensagem é obrigatória.').max(500, 'A mensagem deve ter no máximo 500 caracteres.'),
+  description: z.string().max(1000, 'A descrição deve ter no máximo 1000 caracteres.').optional().nullable(),
+  type: z.string().default('system'),
+  priority: z.enum(['low', 'medium', 'high', 'critical', 'positive'], {
+    message: 'Prioridade inválida.',
+  }).default('medium'),
+  source: z.enum(['system', 'cron', 'billing', 'security', 'insight', 'manual'], {
+    message: 'Origem inválida.',
+  }).default('system'),
+  user_id: z.string().uuid('ID do usuário deve ser um UUID válido.').optional().nullable(),
+  is_pinned: z.boolean().default(false),
+  action_url: z.string().max(255).optional().nullable(),
+  action_label: z.string().max(50).optional().nullable(),
+});
+

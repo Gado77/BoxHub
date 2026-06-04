@@ -335,7 +335,7 @@ export default function SuperAdminPage() {
               <span className="badge badge-success">Online</span>
             </div>
             <div className={styles.infraItem}>
-              <span>Processador de Webhooks Stripe</span>
+              <span>Processador de Webhooks (Asaas/Stripe)</span>
               <span className="badge badge-success">Ativo</span>
             </div>
             <div className={styles.infraItem}>

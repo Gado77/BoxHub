@@ -47,6 +47,7 @@ export async function middleware(request: NextRequest) {
   const isDashboardRoute = request.nextUrl.pathname.startsWith('/dashboard');
   const isApiRoute = request.nextUrl.pathname.startsWith('/api');
   const isStripeWebhook = request.nextUrl.pathname === '/api/stripe/webhook';
+  const isAsaasWebhook = request.nextUrl.pathname === '/api/asaas/webhook';
   const isStripeCheckout = request.nextUrl.pathname === '/api/stripe/checkout';
 
   // Proteger rotas do dashboard
@@ -73,9 +74,9 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Proteger rotas de API (exceto webhook do Stripe e health check público)
+  // Proteger rotas de API (exceto webhooks do Stripe/Asaas e health check público)
   const isHealthCheck = request.nextUrl.pathname === '/api/health';
-  if (isApiRoute && !isStripeWebhook && !isHealthCheck) {
+  if (isApiRoute && !isStripeWebhook && !isAsaasWebhook && !isHealthCheck) {
     if (!user) {
       return new NextResponse(
         JSON.stringify({ error: 'Não autorizado. Sessão inválida ou expirada.' }),
@@ -109,10 +110,11 @@ export async function middleware(request: NextRequest) {
         const isInactive = ['canceled', 'unpaid'].includes(subscription.status);
 
         if (isTrialExpired || isInactive) {
-          // Rotas liberadas para regularização e checkout do Stripe
+          // Rotas liberadas para regularização e checkout
           const isBypass = 
             request.nextUrl.pathname === '/dashboard/planos' ||
             request.nextUrl.pathname.startsWith('/api/stripe') ||
+            request.nextUrl.pathname.startsWith('/api/asaas') ||
             request.nextUrl.pathname === '/api/health';
 
           if (!isBypass) {

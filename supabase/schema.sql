@@ -1,5 +1,11 @@
 -- BoxHub Database Schema
 -- SQL script to initialize tables, relations, and Row Level Security (RLS) policies
+-- 
+-- IMPORTANTE PARA DEPLOY EM PRODUÇÃO:
+-- Se você já tem uma versão anterior do banco de dados em produção, certifique-se de rodar
+-- as migrações 'supabase/migrations/06-create-notifications.sql' e 'supabase/migrations/07-add-asaas-columns.sql'
+-- para atualizar a estrutura de tabelas, RLS e colunas do Asaas.
+-- Para novas instalações (fresh installs), este arquivo 'schema.sql' já contém a estrutura de schema completa e consolidada.
 
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
@@ -9,6 +15,7 @@ create table public.organizations (
     id uuid primary key default gen_random_uuid(),
     name text not null,
     stripe_customer_id text unique,
+    asaas_customer_id text unique,
     subscription_status text not null default 'trial' check (subscription_status in ('trial', 'active', 'past_due', 'canceled')),
     subscription_price_id text,
     settings jsonb not null default '{"estoque_ativo": false}'::jsonb,
@@ -338,6 +345,9 @@ create table if not exists public.subscriptions (
     stripe_customer_id text unique,
     stripe_subscription_id text unique,
     stripe_price_id text,
+    asaas_customer_id text unique,
+    asaas_subscription_id text unique,
+    billing_provider text not null default 'stripe' check (billing_provider in ('stripe', 'asaas')),
     plan text not null check (plan in ('basic', 'pro', 'enterprise')),
     billing_cycle text check (billing_cycle in ('monthly', 'annual')),
     status text not null,
@@ -370,6 +380,10 @@ create trigger on_subscription_update
 -- Indexes for subscriptions
 create index if not exists idx_subscriptions_company_id on public.subscriptions(company_id);
 create index if not exists idx_subscriptions_stripe_sub_id on public.subscriptions(stripe_subscription_id);
+create index if not exists idx_subscriptions_asaas_cust on public.subscriptions(asaas_customer_id);
+create index if not exists idx_subscriptions_asaas_sub on public.subscriptions(asaas_subscription_id);
+create index if not exists idx_subscriptions_provider on public.subscriptions(billing_provider);
+create index if not exists idx_organizations_asaas_cust on public.organizations(asaas_customer_id);
 
 
 -- =========================================================================
@@ -655,6 +669,102 @@ begin
     );
 end;
 $$ language plpgsql;
+
+
+-- =========================================================================
+-- 13. NOTIFICATIONS
+-- =========================================================================
+create table if not exists public.notifications (
+    id uuid primary key default gen_random_uuid(),
+    organization_id uuid not null references public.organizations(id) on delete cascade,
+    user_id uuid references public.profiles(id) on delete cascade, -- se nulo, é para toda a org
+    title text not null,
+    message text not null,
+    description text,
+    type text not null, -- system, sales, fiado, stock, customer, billing, team
+    priority text not null default 'medium' check (priority in ('low', 'medium', 'high', 'critical', 'positive')),
+    source text not null default 'system' check (source in ('system', 'cron', 'billing', 'security', 'insight', 'manual')),
+    status text not null default 'unread' check (status in ('unread', 'read', 'archived')),
+    is_pinned boolean not null default false,
+    action_url text,
+    action_label text,
+    metadata jsonb not null default '{}'::jsonb,
+    read_at timestamptz,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+-- Habilitar RLS
+alter table public.notifications enable row level security;
+
+-- Políticas de RLS
+create policy "Users can view notifications"
+    on public.notifications for select
+    using (
+        public.is_superadmin()
+        or (
+            organization_id = public.current_user_org_id()
+            and (
+                -- admin vê todas as notificações da organização
+                (select role from public.profiles where id = auth.uid()) = 'admin'
+                -- vendedor vê apenas notificações gerais da org (user_id nulo) ou direcionadas a ele
+                or (
+                    (select role from public.profiles where id = auth.uid()) = 'vendedor'
+                    and (user_id is null or user_id = auth.uid())
+                )
+            )
+        )
+    );
+
+create policy "Users can update their notifications status"
+    on public.notifications for update
+    using (
+        public.is_superadmin()
+        or (
+            organization_id = public.current_user_org_id()
+            and (
+                (select role from public.profiles where id = auth.uid()) = 'admin'
+                or (
+                    (select role from public.profiles where id = auth.uid()) = 'vendedor'
+                    and (user_id is null or user_id = auth.uid())
+                )
+            )
+        )
+    )
+    with check (
+        true
+    );
+
+-- Trigger para updated_at automático
+create trigger on_notification_update
+    before update on public.notifications
+    for each row
+    execute function public.handle_updated_at();
+
+-- Índices de performance
+create index if not exists idx_notifications_org_status on public.notifications(organization_id, status);
+create index if not exists idx_notifications_user_status on public.notifications(user_id, status);
+create index if not exists idx_notifications_created_at on public.notifications(created_at desc);
+
+
+-- =========================================================================
+-- 14. WEBHOOK EVENTS (Idempotency)
+-- =========================================================================
+create table if not exists public.webhook_events (
+    id text primary key,
+    provider text not null check (provider in ('stripe', 'asaas')),
+    status text not null default 'processed' check (status in ('processing', 'processed', 'failed')),
+    processed_at timestamptz not null default now()
+);
+
+-- Habilitar RLS
+alter table public.webhook_events enable row level security;
+
+-- Políticas de RLS para webhook_events
+create policy "Superadmins can view webhook events"
+    on public.webhook_events for select
+    using (public.is_superadmin());
+
 
 
 

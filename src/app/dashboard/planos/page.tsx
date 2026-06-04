@@ -145,7 +145,11 @@ export default function PlanosPage() {
     try {
       setActionLoading('portal');
       setError(null);
-      logAnalytics('clicked_manage_billing', { customer_id: subscription?.stripe_customer_id });
+      
+      const provider = process.env.NEXT_PUBLIC_BILLING_PROVIDER || 'stripe';
+      const isAsaas = provider === 'asaas';
+      const customerId = isAsaas ? subscription?.asaas_customer_id : subscription?.stripe_customer_id;
+      logAnalytics('clicked_manage_billing', { customer_id: customerId });
 
       if (isMockMode) {
         await new Promise((r) => setTimeout(r, 600));
@@ -157,7 +161,8 @@ export default function PlanosPage() {
         setSuccess('Estado da assinatura mock alternado localmente!');
         await loadData();
       } else {
-        const res = await fetch('/api/stripe/customer-portal', {
+        const endpoint = isAsaas ? '/api/asaas/customer-portal' : '/api/stripe/customer-portal';
+        const res = await fetch(endpoint, {
           method: 'POST',
         });
 
@@ -173,7 +178,8 @@ export default function PlanosPage() {
         }
       }
     } catch (err: any) {
-      console.error('Erro ao acessar portal Stripe:', err);
+      const provider = process.env.NEXT_PUBLIC_BILLING_PROVIDER || 'stripe';
+      console.error(`Erro ao acessar portal de faturamento (${provider === 'asaas' ? 'Asaas' : 'Stripe'}):`, err);
       setError(err.message || 'Erro ao carregar configurações de pagamento.');
     } finally {
       setActionLoading(null);
@@ -190,12 +196,15 @@ export default function PlanosPage() {
       return;
     }
 
+    const provider = process.env.NEXT_PUBLIC_BILLING_PROVIDER || 'stripe';
+    const isAsaas = provider === 'asaas';
+
     const priceId = planKey === 'pro' 
       ? (billingPeriod === 'annual' ? process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_ANNUAL : process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO) 
       : (billingPeriod === 'annual' ? process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC_ANNUAL : process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC);
 
-    if (!priceId && !isMockMode) {
-      setError('Configuração do Stripe ausente para este plano.');
+    if (!isAsaas && !priceId && !isMockMode) {
+      setError('Configuração de faturamento ausente para este plano.');
       return;
     }
 
@@ -221,11 +230,12 @@ export default function PlanosPage() {
         setSuccess(`Plano ${planKey === 'pro' ? 'Pro' : 'Básico'} (${billingPeriod === 'annual' ? 'Anual' : 'Mensal'}) ativado no ambiente sandbox!`);
         await loadData();
       } else {
-        // Fazer checkout real no Stripe
-        const res = await fetch('/api/stripe/checkout', {
+        // Fazer checkout real baseado no provedor configurado
+        const endpoint = isAsaas ? '/api/asaas/checkout' : '/api/stripe/checkout';
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ priceId }),
+          body: JSON.stringify({ priceId, plan: planKey, cycle: billingPeriod }),
         });
 
         const data = await res.json();
@@ -255,6 +265,9 @@ export default function PlanosPage() {
 
   // Retorna se o plano exibido é o plano atual do cliente
   const isCurrentPlan = (planKey: 'basic' | 'pro' | 'enterprise') => {
+    const provider = process.env.NEXT_PUBLIC_BILLING_PROVIDER || 'stripe';
+    const isAsaas = provider === 'asaas';
+
     if (!subscription) {
       // Se não há assinatura cadastrada mas o trial calculado é ativo, considera o Plano Pro atual
       if (planKey === 'pro') {
@@ -262,6 +275,14 @@ export default function PlanosPage() {
       }
       return false;
     }
+
+    // Se o provedor for Asaas, mas a assinatura só tiver Stripe (e não Asaas customer ID),
+    // não consideramos como plano ativo Asaas corrente para fins de desabilitar o botão,
+    // permitindo que o usuário escolha o plano/ative a cobrança Asaas.
+    if (isAsaas && !subscription.asaas_customer_id) {
+      return false;
+    }
+
     return subscription.plan === planKey && ['active', 'trialing'].includes(subscription.status);
   };
 
@@ -297,6 +318,46 @@ export default function PlanosPage() {
       </div>
     );
   }
+
+  const provider = process.env.NEXT_PUBLIC_BILLING_PROVIDER || 'stripe';
+  const isAsaas = provider === 'asaas';
+  const hasActiveBillingForProvider = isAsaas 
+    ? !!subscription?.asaas_customer_id 
+    : !!subscription?.stripe_customer_id;
+
+  const getButtonText = (planKey: 'basic' | 'pro') => {
+    const isCurrent = subscription?.plan === planKey;
+    const isTrial = subscription?.status === 'trialing';
+    const isActive = subscription?.status === 'active';
+    
+    if (isAsaas && subscription?.stripe_customer_id && !subscription?.asaas_customer_id) {
+      return isCurrent ? 'Ativar cobrança Asaas' : 'Escolher plano';
+    }
+    
+    if (planKey === 'basic') {
+      return (isCurrent && isActive && hasActiveBillingForProvider) ? 'Plano Atual' : 'Escolher Básico';
+    } else {
+      if (isCurrent && isTrial && hasActiveBillingForProvider) return 'Iniciar Assinatura Pro';
+      if (isCurrent && isActive && hasActiveBillingForProvider) return 'Plano Atual';
+      if (!subscription && getTrialDaysRemaining() > 0) return 'Iniciar Assinatura Pro';
+      return 'Experimentar 7 dias grátis';
+    }
+  };
+
+  const isButtonDisabled = (planKey: 'basic' | 'pro') => {
+    if (actionLoading !== null) return true;
+    
+    if (isAsaas && subscription?.stripe_customer_id && !subscription?.asaas_customer_id) {
+      // Quando for migração do Stripe para Asaas, não desabilita os botões para permitir ativar/escolher o plano no Asaas
+      return false;
+    }
+    
+    if (planKey === 'basic') {
+      return !!(isCurrentPlan('basic') && hasActiveBillingForProvider);
+    } else {
+      return !!(isCurrentPlan('pro') && hasActiveBillingForProvider && subscription?.status === 'active');
+    }
+  };
 
   const trialDaysLeft = getTrialDaysRemaining();
   // Se não há assinatura cadastrada, calcula a expiração do trial baseado no tempo de criação da organização
@@ -337,7 +398,7 @@ export default function PlanosPage() {
           <div className={`${styles.alert} ${styles.alertDanger}`}>
             <AlertTriangle size={20} className={styles.featureCheck} style={{ color: '#ef4444' }} />
             <div>
-              <strong>Atenção:</strong> Sua assinatura consta como <strong>{getSubscriptionStatusText()}</strong>. Regularize seus dados de cobrança no Stripe Portal abaixo para evitar suspensão de recursos.
+              <strong>Atenção:</strong> Sua assinatura consta como <strong>{getSubscriptionStatusText()}</strong>. Regularize seus dados de cobrança no portal de faturamento para evitar suspensão de recursos.
             </div>
           </div>
         )}
@@ -366,8 +427,8 @@ export default function PlanosPage() {
         )}
       </div>
 
-      {/* Se já possuir assinatura e não estiver vencido, exibe box para gerenciar faturamento */}
-      {subscription && subscription.stripe_customer_id && (
+      {/* Se já possuir assinatura e faturamento ativo, exibe box para gerenciar faturamento */}
+      {subscription && hasActiveBillingForProvider && (
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -408,6 +469,52 @@ export default function PlanosPage() {
               <>
                 <CreditCard size={16} />
                 <span>Gerenciar Faturamento</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Se o provider for Asaas, e a organização ainda só tiver stripe_customer_id e não tiver asaas_customer_id */}
+      {subscription && isAsaas && subscription.stripe_customer_id && !subscription.asaas_customer_id && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '12px',
+          padding: '1.25rem 1.5rem',
+          marginBottom: '2.5rem',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}>
+          <div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Plano Atual (Faturamento Legado)</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
+              <strong style={{ fontSize: '1.15rem', color: 'var(--text-main)', textTransform: 'capitalize' }}>
+                {subscription.plan === 'basic' ? 'Plano Básico' : subscription.plan === 'pro' ? 'Plano Pro' : 'Plano Enterprise'}
+              </strong>
+              <span className="badge badge-warning">
+                Migração Requerida
+              </span>
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Sua assinatura anterior foi criada no Stripe. Para continuar, ative a cobrança via Asaas.
+            </span>
+          </div>
+          <button 
+            onClick={() => handleSelectPlan(subscription.plan === 'basic' ? 'basic' : 'pro')}
+            disabled={actionLoading !== null}
+            className="btn-primary"
+            style={{ minWidth: '180px', justifyContent: 'center' }}
+          >
+            {actionLoading !== null ? (
+              <span className="loading-spinner"></span>
+            ) : (
+              <>
+                <CreditCard size={16} />
+                <span>Ativar cobrança Asaas</span>
               </>
             )}
           </button>
@@ -489,20 +596,18 @@ export default function PlanosPage() {
 
           <button
             onClick={() => handleSelectPlan('basic')}
-            disabled={actionLoading !== null || isCurrentPlan('basic')}
+            disabled={isButtonDisabled('basic')}
             className="btn-secondary"
             style={{ width: '100%', justifyContent: 'center' }}
           >
             {actionLoading === 'basic' ? (
               <span className="loading-spinner"></span>
-            ) : isCurrentPlan('basic') ? (
-              'Plano Atual'
             ) : (
-              'Escolher Básico'
+              getButtonText('basic')
             )}
           </button>
 
-          {subscription && subscription.plan === 'pro' && subscription.status === 'active' && (
+          {subscription && subscription.plan === 'pro' && subscription.status === 'active' && hasActiveBillingForProvider && (
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.75rem', textAlign: 'center', lineHeight: '1.2' }}>
               {getSubAgeInDays() <= 7 ? (
                 <span style={{ color: 'var(--success)' }}>
@@ -571,24 +676,18 @@ export default function PlanosPage() {
 
           <button
             onClick={() => handleSelectPlan('pro')}
-            disabled={actionLoading !== null || (isCurrentPlan('pro') && subscription?.status === 'active')}
+            disabled={isButtonDisabled('pro')}
             className="btn-primary"
             style={{ width: '100%', justifyContent: 'center' }}
           >
             {actionLoading === 'pro' ? (
               <span className="loading-spinner"></span>
-            ) : subscription?.plan === 'pro' && subscription?.status === 'trialing' ? (
-              'Iniciar Assinatura Pro'
-            ) : subscription?.plan === 'pro' && subscription?.status === 'active' ? (
-              'Plano Atual'
-            ) : !subscription && getTrialDaysRemaining() > 0 ? (
-              'Iniciar Assinatura Pro'
             ) : (
-              'Experimentar 7 dias grátis'
+              getButtonText('pro')
             )}
           </button>
 
-          {subscription && subscription.plan === 'basic' && subscription.status === 'active' && (
+          {subscription && subscription.plan === 'basic' && subscription.status === 'active' && hasActiveBillingForProvider && (
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.75rem', textAlign: 'center', lineHeight: '1.2' }}>
               {getSubAgeInDays() <= 7 ? (
                 <span style={{ color: 'var(--success)' }}>

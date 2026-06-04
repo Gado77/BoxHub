@@ -332,6 +332,8 @@
 }
 
 .topBar {
+  position: relative;
+  z-index: 1000;
   height: 70px;
   border-bottom: 1px solid var(--border-color);
   padding: 0 2rem;
@@ -482,7 +484,7 @@
   background: var(--bg-main);
   position: sticky;
   top: 0;
-  z-index: 99;
+  z-index: 1000;
 }
 
 .mobileBranding {

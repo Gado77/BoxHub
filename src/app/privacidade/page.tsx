@@ -62,7 +62,7 @@ export default function PrivacidadePage() {
             Para que você utilize os recursos operacionais do CRM, processamos os seguintes tipos de dados:
           </p>
           <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.6', fontSize: '0.95rem', color: '#d1d5db' }}>
-            <li><strong>Dados do Boxista/Membros:</strong> Nome completo, endereço de e-mail de trabalho, cargo, informações da empresa (CNPJ, nome fantasia do Box) e dados de cobrança via Stripe.</li>
+            <li><strong>Dados do Boxista/Membros:</strong> Nome completo, endereço de e-mail de trabalho, cargo, informações da empresa (CNPJ, nome fantasia do Box) e dados de cobrança via nosso processador de faturamento (Asaas/Stripe).</li>
             <li><strong>Dados dos seus Clientes (Titulares de Dados):</strong> Nome do cliente, segmento comercial (quitanda, mercado, etc.), número de contato de WhatsApp/telefone e registros financeiros internos relacionados ao saldo devedor (limite e amortizações de fiado).</li>
           </ul>
         </section>
@@ -91,7 +91,7 @@ export default function PrivacidadePage() {
           </p>
           <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.6', fontSize: '0.95rem', color: '#d1d5db' }}>
             <li><strong>Supabase Inc:</strong> Armazenamento seguro de banco de dados baseado em nuvem nos servidores AWS.</li>
-            <li><strong>Stripe Inc:</strong> Processamento seguro de pagamentos e assinaturas recorrentes com certificação PCI-DSS.</li>
+            <li><strong>Asaas / Stripe:</strong> Processamento seguro de pagamentos e assinaturas recorrentes com certificação de segurança.</li>
             <li><strong>Sentry:</strong> Monitoramento de erros de código e estabilidade do sistema em tempo real.</li>
           </ul>
         </section>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase, isMockMode, mockDb, CRM_BRANDING } from '@/lib/supabase';
-import { Profile, Organization } from '@/lib/types';
+import { Profile, Organization, Subscription } from '@/lib/types';
 import { initOfflineSync } from '@/lib/offline-queue';
 import { 
   LayoutDashboard, 
@@ -27,6 +27,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import styles from './dashboard.module.css';
+import NotificationBell from '@/components/NotificationBell';
 
 export default function DashboardLayout({
   children,
@@ -38,6 +39,7 @@ export default function DashboardLayout({
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<Profile | null>(null);
   const [org, setOrg] = useState<Organization | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   
   // Theme and Sidebar States
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
@@ -58,6 +60,7 @@ export default function DashboardLayout({
         if (isMockMode) {
           const currentUser = mockDb.getCurrentUser();
           const currentOrg = mockDb.getOrg();
+          const currentSub = mockDb.subscriptions.get();
           
           if (!currentUser) {
             router.push('/login');
@@ -65,6 +68,7 @@ export default function DashboardLayout({
           }
           setUser(currentUser);
           setOrg(currentOrg);
+          setSubscription(currentSub);
         } else {
           const { data: { session } } = await supabase!.auth.getSession();
           if (!session) {
@@ -82,11 +86,20 @@ export default function DashboardLayout({
           if (profile) {
             setUser(profile);
             setOrg(profile.organizations);
+
+            // Fetch subscription data
+            const { data: subData } = await supabase!
+              .from('subscriptions')
+              .select('*')
+              .eq('company_id', profile.organization_id)
+              .single();
+            setSubscription(subData || null);
           } else {
             // Profile not found in database (e.g. user was deleted in backend)
             await supabase!.auth.signOut();
             setUser(null);
             setOrg(null);
+            setSubscription(null);
             router.push('/login');
             return;
           }
@@ -373,7 +386,13 @@ export default function DashboardLayout({
                   style={{ fontWeight: '500', cursor: 'pointer' }}
                 >
                   {org?.subscription_status === 'active' 
-                    ? (org?.subscription_price_id === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || org?.subscription_price_id === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_ANNUAL ? 'Assinante Pro' : 'Assinante Básico')
+                    ? (
+                        subscription?.plan === 'pro' || 
+                        org?.subscription_price_id === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO || 
+                        org?.subscription_price_id === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_ANNUAL 
+                          ? 'Assinante Pro' 
+                          : 'Assinante Básico'
+                      )
                     : org?.subscription_status === 'trial' 
                     ? 'Período de Testes' 
                     : 'Ajustar Faturamento'}
@@ -394,6 +413,8 @@ export default function DashboardLayout({
             )}
 
             {/* Theme Toggle Button Desktop */}
+            <NotificationBell />
+            
             <button 
               onClick={toggleTheme} 
               className={styles.themeToggleBtn} 
@@ -440,6 +461,8 @@ export default function DashboardLayout({
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
+
+            <NotificationBell />
             
             {user && (
               <div style={{ position: 'relative' }}>

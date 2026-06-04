@@ -277,6 +277,43 @@ export default function NewSaleModal({ onClose, onSaleCreated }: NewSaleModalPro
             pricePerBox: item.pricePerBox
           }))
         );
+
+        // Disparar notificação mock se for fiado e atingir 90% do limite
+        if (paymentMethod === 'fiado' && selectedClient) {
+          const newBalance = clientFiadoBalance + totalAmount;
+          const ratio = newBalance / selectedClient.fiado_limit;
+          if (ratio >= 0.9) {
+            const { mockStore } = require('@/lib/supabase');
+            const allNotifs = mockStore.getNotifications();
+            const alreadyAlerted = allNotifs.some(
+              (n: any) => n.type === 'fiado' && n.status === 'unread' && n.metadata?.client_id === selectedClientId
+            );
+            if (!alreadyAlerted) {
+              const newNotif = {
+                id: `notif-fiado-${Date.now()}`,
+                organization_id: selectedClient.organization_id,
+                user_id: null,
+                title: '⚠️ Limite de fiado atingido',
+                message: `O cliente ${selectedClient.name} atingiu ${(ratio * 100).toFixed(0)}% do seu limite de fiado disponível.`,
+                description: `${selectedClient.name} possui um débito em aberto de R$ ${newBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de um limite de R$ ${selectedClient.fiado_limit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+                type: 'fiado',
+                priority: 'high',
+                source: 'system',
+                status: 'unread',
+                is_pinned: false,
+                action_url: '/dashboard/fiado',
+                action_label: 'Ver Gestão de Fiado',
+                metadata: { client_id: selectedClientId, current_balance: newBalance, limit: selectedClient.fiado_limit },
+                read_at: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              };
+              allNotifs.unshift(newNotif);
+              mockStore.saveNotifications(allNotifs);
+            }
+          }
+        }
+
         await new Promise(r => setTimeout(r, 600));
       } else {
         const orgId = (await supabase!.from('profiles').select('organization_id').eq('id', (await supabase!.auth.getUser()).data.user?.id).single()).data?.organization_id;
@@ -380,6 +417,19 @@ export default function NewSaleModal({ onClose, onSaleCreated }: NewSaleModalPro
                 qty: item.quantity
               });
             }
+          }
+        }
+
+        // Chamar verificação de limite de fiado de forma segura no servidor
+        if (paymentMethod === 'fiado' && selectedClientId) {
+          try {
+            fetch('/api/sales/fiado-alert', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ clientId: selectedClientId })
+            }).catch(e => console.error('[Fiado Alert Client Request Error]:', e));
+          } catch (e) {
+            console.error(e);
           }
         }
       }

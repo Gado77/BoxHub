@@ -11,6 +11,7 @@ export interface Organization {
   id: string;
   name: string;
   stripe_customer_id: string | null;
+  asaas_customer_id?: string | null;
   subscription_status: 'trial' | 'active' | 'past_due' | 'canceled';
   subscription_price_id?: string | null;
   settings: OrgSettings;
@@ -110,6 +111,9 @@ export interface Subscription {
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   stripe_price_id: string | null;
+  asaas_customer_id: string | null;
+  asaas_subscription_id: string | null;
+  billing_provider: 'stripe' | 'asaas';
   plan: 'basic' | 'pro' | 'enterprise';
   billing_cycle: 'monthly' | 'annual' | null;
   status: string;
@@ -119,4 +123,25 @@ export interface Subscription {
   created_at: string;
   updated_at: string;
 }
+
+export interface Notification {
+  id: string;
+  organization_id: string;
+  user_id: string | null;
+  title: string;
+  message: string;
+  description: string | null;
+  type: string; // system, sales, fiado, stock, customer, billing, team
+  priority: 'low' | 'medium' | 'high' | 'critical' | 'positive';
+  source: 'system' | 'cron' | 'billing' | 'security' | 'insight' | 'manual';
+  status: 'unread' | 'read' | 'archived';
+  is_pinned: boolean;
+  action_url: string | null;
+  action_label: string | null;
+  metadata: any;
+  read_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 
