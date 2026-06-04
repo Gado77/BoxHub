@@ -66,12 +66,16 @@ export const asaas = {
    */
   async createCustomer(name: string, email: string, externalReference: string): Promise<AsaasCustomer> {
     console.log(`[Asaas] Criando cliente: ${name} (${email})`);
+    const isSandbox = ASAAS_API_URL.includes('sandbox') || ASAAS_API_KEY.includes('hmlg');
+    const cpfCnpj = isSandbox ? '00000000000191' : undefined;
+    
     return asaasFetch<AsaasCustomer>('/customers', {
       method: 'POST',
       body: JSON.stringify({
         name,
         email,
         externalReference,
+        cpfCnpj,
       }),
     });
   },
