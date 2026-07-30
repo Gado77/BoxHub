@@ -283,7 +283,7 @@ export default function PlanosPage() {
       return false;
     }
 
-    return subscription.plan === planKey && ['active', 'trialing'].includes(subscription.status);
+    return subscription.plan === planKey && ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(subscription.status);
   };
 
   // Retorna texto descritivo do status do plano
@@ -329,14 +329,25 @@ export default function PlanosPage() {
     const isCurrent = subscription?.plan === planKey;
     const isTrial = subscription?.status === 'trialing';
     const isActive = subscription?.status === 'active';
-    
+    const isPending = subscription && ['past_due', 'unpaid', 'incomplete'].includes(subscription.status);
+
     if (isAsaas && subscription?.stripe_customer_id && !subscription?.asaas_customer_id) {
       return isCurrent ? 'Ativar cobrança Asaas' : 'Escolher plano';
     }
-    
+
+    if (isCurrent && isPending) {
+      return 'Continuar pagamento';
+    }
+
     if (planKey === 'basic') {
-      return (isCurrent && isActive && hasActiveBillingForProvider) ? 'Plano Atual' : 'Escolher Básico';
+      if (subscription && subscription.plan === 'pro' && ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(subscription.status)) {
+        return 'Agendar downgrade';
+      }
+      return (isCurrent && (isActive || isTrial) && hasActiveBillingForProvider) ? 'Plano Atual' : 'Escolher Básico';
     } else {
+      if (subscription && subscription.plan === 'basic' && ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(subscription.status)) {
+        return 'Fazer upgrade para Pro';
+      }
       if (isCurrent && isTrial && hasActiveBillingForProvider) return 'Iniciar Assinatura Pro';
       if (isCurrent && isActive && hasActiveBillingForProvider) return 'Plano Atual';
       if (!subscription && getTrialDaysRemaining() > 0) return 'Iniciar Assinatura Pro';
@@ -351,11 +362,27 @@ export default function PlanosPage() {
       // Quando for migração do Stripe para Asaas, não desabilita os botões para permitir ativar/escolher o plano no Asaas
       return false;
     }
+
+    const isCurrent = subscription?.plan === planKey;
+    const isPending = isCurrent && subscription && ['past_due', 'unpaid', 'incomplete'].includes(subscription.status);
+
+    if (isPending) {
+      // Se está pendente, o botão "Continuar pagamento" deve estar ativo (não desabilitado)
+      return false;
+    }
     
     if (planKey === 'basic') {
+      if (subscription && subscription.plan === 'pro' && ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(subscription.status)) {
+        // "Agendar downgrade" (abrir WhatsApp) deve estar ativo
+        return false;
+      }
       return !!(isCurrentPlan('basic') && hasActiveBillingForProvider);
     } else {
-      return !!(isCurrentPlan('pro') && hasActiveBillingForProvider && subscription?.status === 'active');
+      if (subscription && subscription.plan === 'basic' && ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(subscription.status)) {
+        // "Fazer upgrade para Pro" deve estar ativo
+        return false;
+      }
+      return !!(isCurrentPlan('pro') && hasActiveBillingForProvider && subscription && ['active', 'trialing'].includes(subscription.status));
     }
   };
 
@@ -595,7 +622,14 @@ export default function PlanosPage() {
           </ul>
 
           <button
-            onClick={() => handleSelectPlan('basic')}
+            onClick={() => {
+              if (subscription && subscription.plan === 'pro' && ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(subscription.status)) {
+                const text = encodeURIComponent('Olá! Gostaria de agendar o downgrade do meu plano Pro para o Básico.');
+                window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, '_blank');
+              } else {
+                handleSelectPlan('basic');
+              }
+            }}
             disabled={isButtonDisabled('basic')}
             className="btn-secondary"
             style={{ width: '100%', justifyContent: 'center' }}
@@ -607,17 +641,11 @@ export default function PlanosPage() {
             )}
           </button>
 
-          {subscription && subscription.plan === 'pro' && subscription.status === 'active' && hasActiveBillingForProvider && (
+          {subscription && subscription.plan === 'pro' && ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(subscription.status) && hasActiveBillingForProvider && (
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.75rem', textAlign: 'center', lineHeight: '1.2' }}>
-              {getSubAgeInDays() <= 7 ? (
-                <span style={{ color: 'var(--success)' }}>
-                  ✓ Reembolso Garantido: Você receberá o reembolso integral do Plano Pro ao migrar para o Básico.
-                </span>
-              ) : (
-                <span>
-                  ℹ Downgrade Pró-Rata: A diferença proporcional gerará créditos para suas próximas faturas.
-                </span>
-              )}
+              <span>
+                ℹ O downgrade de planos é realizado exclusivamente através do nosso suporte.
+              </span>
             </div>
           )}
         </div>
@@ -687,15 +715,15 @@ export default function PlanosPage() {
             )}
           </button>
 
-          {subscription && subscription.plan === 'basic' && subscription.status === 'active' && hasActiveBillingForProvider && (
+          {subscription && subscription.plan === 'basic' && ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(subscription.status) && hasActiveBillingForProvider && (
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.75rem', textAlign: 'center', lineHeight: '1.2' }}>
               {getSubAgeInDays() <= 7 ? (
                 <span style={{ color: 'var(--success)' }}>
-                  ✓ Reembolso Garantido: Você receberá o reembolso integral do Plano Básico ao migrar para o Pro.
+                  ✓ Tentativa de Reembolso: Solicitaremos o estorno do Plano Básico ao migrar para o Pro.
                 </span>
               ) : (
                 <span>
-                  ℹ Upgrade Pró-Rata: Você pagará apenas a diferença proporcional ao migrar para o Pro.
+                  ℹ Upgrade imediato: A assinatura do Plano Básico será cancelada automaticamente.
                 </span>
               )}
             </div>

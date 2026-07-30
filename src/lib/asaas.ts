@@ -20,6 +20,9 @@ export interface AsaasPayment {
   invoiceUrl: string;
   bankSlipUrl: string | null;
   status: string;
+  value: number;
+  paymentDate?: string | null;
+  confirmedDate?: string | null;
 }
 
 const ASAAS_API_URL = (process.env.ASAAS_API_URL || 'https://sandbox.asaas.com/api/v3').trim();
@@ -142,12 +145,34 @@ export const asaas = {
   },
 
   /**
+   * Obtém as assinaturas de um cliente no Asaas
+   */
+  async getCustomerSubscriptions(customerId: string): Promise<AsaasSubscription[]> {
+    const data = await asaasFetch<{ data: AsaasSubscription[] }>(`/subscriptions?customer=${customerId}`);
+    return data.data;
+  },
+
+  /**
    * Cancela uma assinatura ativa
    */
   async cancelSubscription(subscriptionId: string): Promise<void> {
     console.log(`[Asaas] Cancelando assinatura: ${subscriptionId}`);
     await asaasFetch<any>(`/subscriptions/${subscriptionId}`, {
       method: 'DELETE',
+    });
+  },
+
+  /**
+   * Reembolsa um pagamento no Asaas
+   */
+  async refundPayment(paymentId: string, value?: number, description?: string): Promise<any> {
+    console.log(`[Asaas] Reembolsando pagamento ${paymentId}`);
+    return asaasFetch<any>(`/payments/${paymentId}/refund`, {
+      method: 'POST',
+      body: JSON.stringify({
+        value,
+        description
+      })
     });
   }
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, isMockMode, mockDb, mockStore, CRM_BRANDING } from '@/lib/supabase';
 import { Lock, Mail, User, Building, AlertCircle, Eye, EyeOff, Check } from 'lucide-react';
@@ -35,6 +35,9 @@ export default function LoginPage() {
       );
     }
   }, []);
+
+  // Prevent redirect race condition during registration
+  const isRegisteringRef = useRef(false);
 
   // Check if already logged in (redirect to dashboard)
   useEffect(() => {
@@ -74,6 +77,9 @@ export default function LoginPage() {
         // 2. Set up listener to catch session after async code exchange/hash parsing
         const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
           if (session && active) {
+            if (isRegisteringRef.current) {
+              return; // Ignore redirect if we are in the middle of registration
+            }
             if (isRecovery) {
               router.push('/reset-password');
             } else if (isInvite) {
@@ -137,10 +143,13 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMsg(null);
+    isRegisteringRef.current = true;
 
     if (!boxName.trim() || !name.trim()) {
       setError('Por favor, preencha todos os campos.');
       setLoading(false);
+      isRegisteringRef.current = false;
       return;
     }
 
@@ -172,6 +181,7 @@ export default function LoginPage() {
         mockDb.setCurrentUser(newUserId);
         
         await new Promise(r => setTimeout(r, 800));
+        isRegisteringRef.current = false;
         router.push('/onboarding');
       } else {
         // Sign up user via supabase
@@ -221,11 +231,13 @@ export default function LoginPage() {
           });
         if (profErr) throw profErr;
 
+        isRegisteringRef.current = false;
         router.push('/onboarding');
       }
     } catch (err: any) {
       console.error('Erro no cadastro:', err);
       setError(err.message || 'Erro ao cadastrar. Tente novamente.');
+      isRegisteringRef.current = false;
     } finally {
       setLoading(false);
     }
